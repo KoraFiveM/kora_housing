@@ -38,6 +38,7 @@ for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLes
     }
     function RegisterCommand() end
     function RegisterNetEvent(name, callback) events[name] = callback end
+    function TriggerServerEvent(name) check(name == 'qbhousing:server:leaveProperty', 'legacy exit releases its authoritative occupant session') end
     function AddEventHandler() end
     function CreateThread(callback) threads[#threads + 1] = coroutine.create(callback) end
     function Wait(duration) coroutine.yield(duration) end

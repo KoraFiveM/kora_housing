@@ -10,6 +10,49 @@ Config = {
     maxClothingSpots = 20,
     command = 'realestate',
     homeCommand = 'home',
+    coordinateLimit = 20000,
+    escrowAccount = 'qbhousing_escrow',
+    salePolicyVersion = 1,
+    saleCommissions = {
+        public = { society = 0.035, agent = 0.025 },
+        off_market = { society = 0.035, agent = 0.025 },
+        private = { society = 0, agent = 0 },
+    },
+    storageTiers = {
+        { label = 'Standard', slots = 50, maxWeight = 100000, price = 0 },
+        { label = 'Expanded', slots = 75, maxWeight = 150000, price = 10000 },
+        { label = 'Large', slots = 100, maxWeight = 200000, price = 25000 },
+    },
+    tenantPermissions = {
+        entry = true, ['stash.open'] = true, ['garage.list'] = true,
+        ['garage.store'] = true, ['garage.retrieve'] = true,
+        ['furniture.place'] = true, ['furniture.move'] = true, ['furniture.remove'] = true,
+    },
+    rentalIntervals = { daily = 86400, weekly = 604800 },
+    depositReviewSeconds = 172800,
+    missedPayments = { daily = 3, weekly = 2 },
+    furnitureModels = {
+        prop_chair_01a = { label = 'Chair' }, prop_table_03 = { label = 'Table' },
+        prop_couch_01 = { label = 'Sofa' }, prop_bin_08 = { label = 'Bin' },
+    },
+    furnitureLimits = { house = 100, apartment = 100, mansion = 100, commercial = 100, hotel = 100, motel = 100, building = 100, land = 100, legacy = 100 },
+    cameraModel = 'prop_cctv_cam_01a',
+    maxCameras = 16,
+    maxCameraViewers = 4,
+    cameraSessionSeconds = 300,
+    cameraGrantSeconds = 86400,
+    alarmCooldown = 60,
+}
+
+Config.propertyTypes = {
+    house = { label = 'House', interior = 'required' },
+    apartment = { label = 'Apartment', interior = 'required' },
+    mansion = { label = 'Mansion', interior = 'required' },
+    commercial = { label = 'Commercial property', interior = 'optional' },
+    hotel = { label = 'Hotel', interior = 'optional' },
+    motel = { label = 'Motel', interior = 'optional' },
+    building = { label = 'Apartment building', interior = 'optional' },
+    land = { label = 'Land or lot', interior = 'none' },
 }
 
 Config.shells = {

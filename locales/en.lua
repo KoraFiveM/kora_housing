@@ -1,0 +1,21 @@
+return {
+    app = {
+        title = 'Housing', unavailable = 'Housing is unavailable. Please try again.',
+        property_id = 'Property ID', label = 'Name', property_type = 'Property type', parent_id = 'Parent property ID (optional)', unit_label = 'Unit label (optional)',
+        reference_price = 'Reference price (optional)', price_help = 'Saving a reference price does not publish a listing.',
+        interior_type = 'Interior', no_interior = 'No interior', shell = 'Shell', mlo = 'MLO', entrance = 'Entrance (X, Y, Z, heading)', exit = 'Interior exit (X, Y, Z, heading)',
+        configure_garage = 'Configure garage location', garage_coords = 'Garage access (X, Y, Z, heading)', garage_spawn = 'Vehicle spawn (X, Y, Z, heading)', garage_slots = 'Garage slots',
+        configuration = 'Configuration', new_property = 'Create property', configuration_help = 'Configure the property and capture its boundary. The server validates all saved changes.',
+        place_boundary = 'Place exterior boundary', clear_boundary = 'Clear boundary', boundary_points = 'Exterior boundary points', save = 'Save property',
+        reload = 'Reload saved configuration', reload_confirm = 'Discard your configuration draft and load the latest saved property?',
+        unowned = 'Unowned', primary_owner = 'Primary owner', coowner = 'Co-owner', citizen_id = 'Citizen ID', relationship = 'Relationship',
+        allow = 'Allow', deny = 'Deny', remove_grant = 'Remove individual grant', remove_grant_confirm = 'Remove this individual grant? Relationship permissions will still apply.',
+        add_coowner = 'Add co-owner', remove_coowner = 'Remove co-owner', remove_coowner_confirm = 'Remove this co-owner? Their ownership and future proceeds end without an automatic buyout. Existing sale approvals become invalid.',
+        action = 'Action', decision = 'Decision', save_access = 'Save access', individual_grants = 'Individual grants', no_grants = 'No individual grants', your_permissions = 'Your effective permissions',
+        people_access = 'People & access', access_help = 'Co-ownership and action permissions are separate. An explicit deny overrides a key. Removing a grant restores relationship defaults.',
+        price = 'Price', request_purchase = 'Submit offer', request_purchase_confirm = 'Request a purchase confirmation for this property?',
+        my_properties = 'My properties', marketplace = 'Marketplace', refresh = 'Refresh', no_properties = 'No accessible properties', no_listings = 'No open listings',
+        overview = 'Overview', state = 'Status', guest = 'Guest', revision = 'Revision', offer_sent = 'Offer submitted for review.',
+        property_created = 'Property created as an unowned draft.', property_saved = 'Property saved.', access_saved = 'Property access updated.', select_property = 'Select a property first.',
+    },
+}

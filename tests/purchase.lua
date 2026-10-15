@@ -1,294 +1,191 @@
--- Run through tests/run.sh with qbcore and qbsql checked out beside qbhousing.
--- Only the FiveM host and SQL driver callbacks are simulated, not purchase,
--- housing copy/persistence, the money ledger, or the qbsql consumer adapter.
-local core = '../qbcore/'
-local h = dofile(core .. 'test/harness.lua')
-dofile(core .. 'test/mocks.lua').install()
-for _, path in ipairs({
-    'config.lua', 'shared/items.lua', 'shared/jobs.lua', 'shared/gangs.lua',
-    'shared/vehicles.lua', 'shared/weapons.lua', 'shared/locations.lua',
-    'modules/util/shared.lua', 'modules/registry/shared.lua', 'modules/registry/server.lua',
-    'modules/player/shared.lua', 'modules/replication/server.lua',
-    'modules/persistence/server.lua', 'modules/player/server.lua', 'modules/money/server.lua',
-}) do dofile(core .. path) end
+local H = dofile('../qbcore/test/harness.lua')
+local setup = dofile('tests/domain_fixture.lua')
 
-local buyer, realtor, seller, secondBuyer = 8, 9, 10, 11
-local buyerCid, realtorCid, sellerCid, secondCid = 'HOUSE_BUYER', 'HOUSE_REALTOR', 'HOUSE_SELLER', 'HOUSE_SECOND'
-for src, cid in pairs({ [buyer] = buyerCid, [realtor] = realtorCid, [seller] = sellerCid, [secondBuyer] = secondCid }) do
-    local data = CoreInternal.player.freshData(cid, 'license:' .. cid, 1, { firstname = cid, lastname = 'Test' })
-    assert(Core.player.login(src, cid, data))
-end
-assert(Core.player.setPath(realtor, { 'job', 'name' }, 'realestate'))
-
-local now = os.time()
-local busyMessage = 'This property is being updated. Please try again.'
-local writeError = 'ER_LOCK_WAIT_TIMEOUT: simulated database write failure'
-
-local function definition(id, owner)
-    return {
-        id = id, owner = owner, state = 'listed', keys = { OLD_KEYHOLDER = true },
-        listing = { price = 5000, type = 'open_market', realtor = realtorCid },
-        pending = { buyer = buyerCid, expires = now + 300 },
-        interior = { type = 'mlo' }, furniture = { { model = 'chair' } },
-        -- Opaque required definition data; no integration or flow is exercised.
-        garage = { coords = {}, spawn = {}, slots = 2 },
-    }
-end
-
-local function setup(owner)
-    for _, src in ipairs({ buyer, realtor, seller, secondBuyer }) do
-        assert(Core.money.setMoney(src, 'bank', 10000))
-    end
-    local f = { callbacks = {}, provided = {}, sqlCalls = {}, moneyCalls = {}, commissions = {}, events = {} }
-    local driver = {}
-    local function submit(kind, statement, params, callback)
-        local request = { kind = kind, statement = statement, params = params, callback = callback }
-        f.sqlCalls[#f.sqlCalls + 1] = request
-        if f.beforeWrite then f.beforeWrite(request) end
-        if f.pauseNextWrite then
-            f.pauseNextWrite, f.pending = false, request
-        elseif f.failWrite then
-            if f.falseResult then callback(false) else callback(nil, writeError) end
-        else
-            callback(kind == 'transaction' and true or { affectedRows = 1 })
-        end
-    end
-    function driver.execute(_, statement, params, callback) submit('execute', statement, params, callback) end
-    -- Lets the same checks run against the pre-fix source as a negative control.
-    function driver.transaction(_, statements, callback) submit('transaction', statements, nil, callback) end
-
-    local resourceExports = { qbsql = driver, qbcore = {}, qbbanking = {} }
-    function resourceExports.qbcore.getPlayer(_, src) return Core.player.getPlayer(src) end
-    function resourceExports.qbcore.getPlayerByCitizenId(_, cid) return Core.player.getPlayerByCitizenId(cid) end
-    function resourceExports.qbcore.removeMoney(_, src, account, amount, reason, ignoreTax)
-        f.moneyCalls[#f.moneyCalls + 1] = { action = 'remove', src = src, account = account, amount = amount, reason = reason, ignoreTax = ignoreTax }
-        if f.rejectDebit then
-            -- Controlled rejection branch, not a claim about real FiveM scheduling:
-            -- spend to the configured account floor after housing's balance read.
-            f.rejectDebit = false
-            assert(Core.money.removeMoney(src, account, Core.money.getMoney(src, account) - Config.money.minusLimit, 'Other purchase', true))
-        end
-        return Core.money.removeMoney(src, account, amount, reason, ignoreTax)
-    end
-    function resourceExports.qbcore.addMoney(_, src, account, amount, reason, ignoreTax)
-        f.moneyCalls[#f.moneyCalls + 1] = { action = 'add', src = src, account = account, amount = amount, reason = reason, ignoreTax = ignoreTax }
-        return Core.money.addMoney(src, account, amount, reason, ignoreTax)
-    end
-    function resourceExports.qbbanking.AddMoney(_, account, amount, reason)
-        if f.beforeCommission then f.beforeCommission() end
-        f.commissions[#f.commissions + 1] = { account = account, amount = amount, reason = reason }
-        return true
-    end
-    -- FiveM's exports global must be both callable and indexable.
-    setmetatable(resourceExports, { __call = function(_, name, fn) f.provided[name] = fn end })
-    local env = {}
-    for key, value in pairs(_G) do env[key] = value end
-    env.Config, env.Housing = nil, nil
-    env.exports = resourceExports
-    env.QB = {
-        callback = { register = function(name, fn) f.callbacks[name] = fn end },
-        permissions = { hasPermission = function() return false end },
-    }
-    env.GetCurrentResourceName = function() return 'qbhousing' end
-    env.CreateThread, env.RegisterNetEvent = function() end, function() end
-    env.TriggerClientEvent = function(name, target, ...) f.events[#f.events + 1] = { name = name, target = target, args = { ... } } end
-    env.os = { time = function() return now end }
-    env.promise = { new = function()
-        return {
-            resolve = function(p, value) p.settled, p.value = true, value end,
-            reject = function(p, err) p.settled, p.err = true, err end,
-        }
-    end }
-    env.Citizen = { Await = function(p)
-        if not p.settled then coroutine.yield('database wait') end
-        assert(p.settled, 'Resolve the controlled SQL callback before resuming')
-        if p.err then error(p.err, 0) end
-        return p.value
-    end }
-    local function load(path) assert(loadfile(path, 't', env))() end
-    load('../qbsql/init.lua')
-    load('config.lua'); load('shared/schema.lua'); load('server/state.lua')
-    load(arg[1] or 'server/main.lua')
-    f.env, f.state = env, env.Housing.state
-    f.state.ready = true
-    f.state.properties.home = assert(env.Housing.normalise(definition('home', owner)))
-    f.state.properties.other = assert(env.Housing.normalise(definition('other')))
-    f.state.properties.other.pending.buyer = secondCid
-    function f.call(name, ...) return assert(f.callbacks['qbhousing:' .. name])(...) end
-    function f.complete(thread, value, err)
-        assert(f.pending, 'Expected a pending SQL request').callback(value, err)
-        f.pending = nil
-        local ok, result, failure = coroutine.resume(thread)
-        assert(ok, result)
-        assert(coroutine.status(thread) == 'dead', 'Callback should finish after one SQL write')
-        return result, failure
-    end
-    return f
-end
-
-local function start(fn)
-    local thread = coroutine.create(fn)
-    local ok, err = coroutine.resume(thread)
-    assert(ok, err)
-    assert(coroutine.status(thread) == 'suspended', 'Expected the SQL consumer adapter to wait')
-    return thread
-end
-
-local function assertListed(f, original)
-    h.assertEqual(f.state.properties.home, original, 'Keep the original live table on failure')
-    h.assertEqual(original.owner, nil)
-    h.assertEqual(original.state, 'listed')
-    h.assertEqual(original.pending.buyer, buyerCid)
-    h.assertEqual(f.provided.HasAccess(buyer, 'home'), false, 'Failed purchase must not grant access')
-end
-
-h.test('invalid, expired, wrong-buyer and insufficient-balance confirmations have no side effects', function()
-    local f = setup()
-    h.assertEqual(f.call('confirmPurchase', buyer, 'missing'), nil)
-    f.state.properties.home.pending.expires = now - 1
-    h.assertEqual(f.call('confirmPurchase', buyer, 'home'), nil)
-    f.state.properties.home.pending.expires = now + 300
-    h.assertEqual(f.call('confirmPurchase', secondBuyer, 'home'), nil)
-    assert(Core.money.setMoney(buyer, 'bank', 4999))
-    h.assertEqual(f.call('confirmPurchase', buyer, 'home'), nil)
-    h.assertEqual(#f.sqlCalls, 0); h.assertEqual(#f.moneyCalls, 0)
-    assertListed(f, f.state.properties.home)
+H.test('sale commits one balanced journal, transfers ownership and clears old access', function()
+    local f = setup({ coowner = true })
+    assert(f.housing.sales.completeSale(2, 'offer'))
+    local property = f.housing.state.get('home')
+    H.assertEqual(property.owner, 'BUYER'); H.assertEqual(next(property.coowners), nil)
+    H.assertEqual(next(property.keys), nil); H.assertEqual(next(property.permissionGrants), nil)
+    H.assertEqual(f.balances.BUYER, 5000); H.assertEqual(f.balances.OWNER, 2500); H.assertEqual(f.balances.COOWNER, 2500)
+    local sum = 0; for _, leg in ipairs(f.db.ledger) do sum = sum + leg[5] end
+    H.assertEqual(sum, 0); H.assertEqual(#f.bankCalls, 1)
+    H.assertEqual(f.db.offers.competing.status, 'superseded')
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), true)
+    H.assertEqual(#f.bankCalls, 1); H.assertEqual(#f.db.ledger, 3)
 end)
 
-for _, falseResult in ipairs({ false, true }) do
-    h.test((falseResult and 'false' or 'nil/error') .. ' persistence failure refunds without changing live ownership, and allows retry', function()
+H.test('competing buyers and duplicate checkout cannot settle while the first save yields', function()
+    local f = setup(); f.bankYield = true
+    local thread = coroutine.create(function() return f.housing.sales.completeSale(2, 'offer') end)
+    local resumed, waiting = coroutine.resume(thread); assert(resumed, waiting); H.assertEqual(waiting, 'bank wait')
+    H.assertEqual(f.housing.sales.completeSale(3, 'competing'), false)
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(#f.bankCalls, 1); H.assertEqual(f.balances.BUYER, 10000)
+    f.bankYield = false
+    local finished, result = coroutine.resume(thread); assert(finished, result); H.assertEqual(result, true)
+    H.assertEqual(f.housing.sales.completeSale(3, 'competing'), false)
+    H.assertEqual(f.balances.SECOND, 10000)
+end)
+
+H.test('all current coowners must approve the exact ownership revision', function()
+    local f = setup({ coowner = true }); f.db.approvals['offer:COOWNER'] = nil
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    assert(f.housing.sales.approveSale(4, 'offer', true))
+    f.db.approvals['offer:COOWNER'].ownership_revision = 0
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    assert(f.housing.sales.approveSale(4, 'offer', true))
+    assert(f.housing.sales.approveSale(1, 'offer', false))
+    H.assertEqual(f.db.offers.offer.status, 'rejected')
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(#f.bankCalls, 0)
+end)
+
+H.test('forged buyer and changed ownership cannot settle an accepted offer', function()
+    local f = setup()
+    H.assertEqual(f.housing.sales.completeSale(3, 'offer'), false)
+    f.housing.state.get('home').ownershipRevision = 2
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(#f.bankCalls, 0)
+end)
+
+H.test('insufficient funds and intent SQL failure leave ownership and money unchanged', function()
+    local f = setup(); f.balances.BUYER = 4999
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(f.housing.state.get('home').owner, 'OWNER'); H.assertEqual(f.balances.OWNER, 0)
+    H.assertEqual(f.db.transactions['sale:offer:1'].status, 'rejected')
+    H.assertEqual(f.housing.transactions.busy('home'), false)
+    f.balances.BUYER, f.failReservation = 10000, true
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(#f.bankCalls, 1); H.assertEqual(f.housing.state.get('home').owner, 'OWNER')
+    f.failReservation = false
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), true)
+    H.assertEqual(f.bankCalls[2].key, 'sale:offer:2')
+end)
+
+for _, mode in ipairs({ 'transport', 'SQL' }) do
+    H.test(mode .. ' failure keeps immutable journal pending and restart resumes exactly once', function()
         local f = setup()
-        local original = f.state.properties.home
-        local before = json.encode(original)
-        f.failWrite, f.falseResult = true, falseResult
-        local saved, err = f.call('confirmPurchase', buyer, 'home')
-        h.assertEqual(saved, nil); h.assertTrue(type(err) == 'string')
-        assertListed(f, original)
-        h.assertEqual(json.encode(original), before, 'All original property fields survive')
-        h.assertEqual(Core.money.getMoney(buyer, 'bank'), 10000)
-        h.assertEqual(#f.sqlCalls, 1); h.assertEqual(#f.events, 0); h.assertEqual(#f.commissions, 0)
-        local refund = f.moneyCalls[2]
-        h.assertEqual(refund.action, 'add'); h.assertEqual(refund.account, 'bank')
-        h.assertEqual(refund.amount, 5000); h.assertEqual(refund.reason, 'Property purchase rollback')
-        h.assertEqual(refund.ignoreTax, true)
-        f.failWrite = false
-        h.assertTrue(f.call('confirmPurchase', buyer, 'home'), 'A failed write must release the guard')
-        h.assertEqual(#f.sqlCalls, 2)
+        if mode == 'transport' then f.bankMode = 'throw' else f.failBankSQL = true end
+        H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+        H.assertEqual(f.housing.transactions.busy('home'), true)
+        H.assertEqual(f.housing.state.get('home').owner, 'OWNER'); H.assertEqual(f.balances.BUYER, 10000)
+        local intent = f.db.transactions['sale:offer:1'].request
+        f.env.Config.saleCommissions.private.society = 0.8
+        f.bankMode, f.failBankSQL = nil, false
+        f.reloadTransactions()
+        H.assertEqual(f.db.transactions['sale:offer:1'].request, intent)
+        H.assertEqual(f.json.encode(f.bankCalls[2].request), intent)
+        H.assertEqual(f.housing.state.get('home').owner, 'BUYER'); H.assertEqual(f.balances.BUYER, 5000)
+        H.assertEqual(f.balances.OWNER, 5000); H.assertEqual(#f.db.ledger, 2)
+        f.housing.transactions.resume()
+        H.assertEqual(#f.bankCalls, 2); H.assertEqual(f.housing.transactions.busy('home'), false)
     end)
 end
 
-h.test('controlled actual money rejection keeps the listing unchanged, performs no SQL and releases the guard', function()
-    local f = setup()
-    local original = f.state.properties.home
-    f.rejectDebit = true
-    local saved, err = f.call('confirmPurchase', buyer, 'home')
-    h.assertEqual(saved, nil); h.assertEqual(err, 'Payment failed; no changes were made.')
-    assertListed(f, original)
-    h.assertEqual(#f.sqlCalls, 0); h.assertEqual(#f.moneyCalls, 1)
-    h.assertEqual(Core.money.getMoney(buyer, 'bank'), Config.money.minusLimit)
-    assert(Core.money.setMoney(buyer, 'bank', 10000))
-    h.assertTrue(f.call('confirmPurchase', buyer, 'home'))
-    h.assertEqual(#f.sqlCalls, 1)
+H.test('lost response after durable settlement reconciles the banking receipt', function()
+    local f = setup(); f.commitThenThrow = true
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), true)
+    H.assertEqual(f.balances.BUYER, 5000); H.assertEqual(f.housing.state.get('home').owner, 'BUYER')
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), true)
+    H.assertEqual(#f.bankCalls, 1); H.assertEqual(#f.db.ledger, 2)
 end)
 
-h.test('successful purchase writes once before publication and commissions, preserving the returned property', function()
-    local f = setup(sellerCid)
-    f.beforeWrite = function()
-        h.assertEqual(f.state.properties.home.owner, sellerCid, 'Ownership stays old until write succeeds')
-        h.assertEqual(f.provided.HasAccess(buyer, 'home'), false)
-        h.assertEqual(Core.money.getMoney(buyer, 'bank'), 5000, 'Payment precedes persistence')
-        h.assertEqual(Core.money.getMoney(seller, 'bank'), 10000)
-        h.assertEqual(#f.commissions, 0); h.assertEqual(#f.events, 0)
-    end
-    f.beforeCommission = function() h.assertEqual(f.provided.HasAccess(buyer, 'home'), true) end
-    local saved, err = f.call('confirmPurchase', buyer, 'home')
-    h.assertEqual(err, nil); h.assertEqual(saved.id, 'home'); h.assertEqual(saved.owner, buyerCid)
-    h.assertEqual(saved.state, 'owned'); h.assertEqual(saved.pending, nil)
-    h.assertEqual(next(saved.keys), nil); h.assertEqual(saved.soldPrice, 5000); h.assertEqual(saved.soldAt, now)
-    h.assertEqual(saved.furniture[1].model, 'chair')
-    h.assertTrue(saved ~= f.state.properties.home, 'Return the existing save helper snapshot')
-    h.assertEqual(#f.sqlCalls, 1); h.assertEqual(f.sqlCalls[1].kind, 'execute')
-    h.assertTrue(f.sqlCalls[1].statement:find('ON DUPLICATE KEY UPDATE', 1, true))
-    h.assertEqual(f.sqlCalls[1].params[1], 'home'); h.assertEqual(f.sqlCalls[1].params[2], buyerCid)
-    h.assertEqual(json.decode(f.sqlCalls[1].params[3]).owner, buyerCid)
-    h.assertEqual(Core.money.getMoney(seller, 'bank'), 14750)
-    h.assertEqual(f.commissions[1].account, f.env.Config.societyAccount)
-    h.assertEqual(f.commissions[1].amount, 150)
-    h.assertEqual(#f.events, 1); h.assertEqual(f.events[1].name, 'qbhousing:client:synced')
-    local debit, proceeds = f.moneyCalls[1], f.moneyCalls[2]
-    h.assertEqual(debit.reason, 'Property purchase'); h.assertEqual(debit.ignoreTax, true)
-    h.assertEqual(proceeds.src, seller); h.assertEqual(proceeds.amount, 4750); h.assertEqual(proceeds.ignoreTax, true)
-    h.assertEqual(f.call('confirmPurchase', buyer, 'home'), nil, 'A completed offer cannot be charged again')
-    h.assertEqual(#f.sqlCalls, 1)
+H.test('failing an exact row precondition rolls back every financial and property effect', function()
+    local f = setup(); f.db.properties.home.revision = 5
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(f.balances.BUYER, 10000); H.assertEqual(f.balances.OWNER, 0)
+    H.assertEqual(f.housing.state.get('home').owner, 'OWNER'); H.assertEqual(#f.db.ledger, 0)
 end)
 
-h.test('reads and another property remain available while checkout waits, then checkout publishes once', function()
-    local f = setup()
-    local original = f.state.properties.home
-    f.pauseNextWrite = true
-    local thread = start(function() return f.call('confirmPurchase', buyer, 'home') end)
-    assertListed(f, original)
-    local copy = f.provided.GetProperty('home')
-    copy.owner = 'UNRELATED'
-    h.assertEqual(original.owner, nil)
-    h.assertEqual(f.call('hydrate', buyer).properties.home.state, 'listed')
-    h.assertTrue(f.call('confirmPurchase', secondBuyer, 'other'), 'Other property must progress independently')
-    h.assertEqual(f.state.properties.other.owner, secondCid)
-    local saved = f.complete(thread, { affectedRows = 1 })
-    h.assertEqual(saved.owner, buyerCid)
-    h.assertEqual(f.provided.HasAccess(buyer, 'home'), true)
-    h.assertEqual(#f.sqlCalls, 2)
-end)
-
-local writers = {
-    { name = 'saveProperty', call = function(f) local value = definition('h@o!me'); return f.call('saveProperty', realtor, value) end },
-    { name = 'removeProperty', call = function(f) return f.call('removeProperty', realtor, 'home') end },
-    { name = 'offer', call = function(f) return f.call('offer', buyer, 'home', buyerCid) end },
-    { name = 'confirmPurchase', call = function(f) return f.call('confirmPurchase', buyer, 'home') end },
-    { name = 'keys', owner = buyerCid, call = function(f) return f.call('keys', buyer, 'home', 'give', 'NEW_KEYHOLDER') end },
-    { name = 'update', owner = buyerCid, call = function(f) return f.call('update', buyer, 'home', 'furniture', { { model = 'table' } }) end },
-}
-for _, writer in ipairs(writers) do
-    h.test('checkout blocks ' .. writer.name .. ' until failure releases the same-property guard', function()
-        local f = setup(writer.owner)
-        f.pauseNextWrite = true
-        local thread = start(function() return f.call('confirmPurchase', buyer, 'home') end)
-        local before = json.encode(f.state.properties.home)
-        local result, err = writer.call(f)
-        h.assertEqual(result, nil); h.assertEqual(err, busyMessage)
-        h.assertEqual(#f.sqlCalls, 1); h.assertEqual(#f.moneyCalls, 1)
-        h.assertEqual(json.encode(f.state.properties.home), before)
-        result, err = f.complete(thread, nil, writeError)
-        h.assertEqual(result, nil); h.assertTrue(err:find(writeError, 1, true))
-        h.assertEqual(Core.money.getMoney(buyer, 'bank'), 10000)
-        h.assertTrue(writer.call(f), 'Purchase failure must release the guard for ' .. writer.name)
-        h.assertEqual(#f.sqlCalls, 2)
-    end)
-    h.test(writer.name .. ' blocks a later checkout until its failed write releases the guard', function()
-        local f = setup(writer.owner)
-        f.pauseNextWrite = true
-        local thread = start(function() return writer.call(f) end)
-        local before = json.encode(f.state.properties.home)
-        local bank = Core.money.getMoney(buyer, 'bank')
-        local result, err = f.call('confirmPurchase', buyer, 'home')
-        h.assertEqual(result, nil); h.assertEqual(err, busyMessage)
-        h.assertEqual(#f.sqlCalls, 1)
-        h.assertEqual(Core.money.getMoney(buyer, 'bank'), bank)
-        h.assertEqual(json.encode(f.state.properties.home), before)
-        result, err = f.complete(thread, nil, writeError)
-        h.assertEqual(result, nil); h.assertTrue(type(err) == 'string')
-        h.assertTrue(f.call('confirmPurchase', buyer, 'home'), writer.name .. ' failure must allow checkout retry')
-        h.assertEqual(#f.sqlCalls, 2)
-    end)
+local function freshListings(f)
+    f.db.listings, f.db.offers, f.db.approvals = {}, {}, {}
+    local property = f.housing.state.get('home')
+    property.state, property.listing = 'owned', nil
 end
 
-h.test('invalid key/update actions do not leave a property guard behind', function()
-    local f = setup(buyerCid)
-    h.assertEqual(f.call('keys', buyer, 'home', 'invalid', 'NEW_KEYHOLDER'), nil)
-    h.assertTrue(f.call('keys', buyer, 'home', 'give', 'NEW_KEYHOLDER'))
-    h.assertEqual(f.call('update', buyer, 'home', 'invalid', {}), nil)
-    h.assertTrue(f.call('update', buyer, 'home', 'clothing', {}))
-    h.assertEqual(#f.sqlCalls, 2)
+H.test('public sale requires an assigned agent recommendation and preserves quoted commission policy', function()
+    local f = setup(); freshListings(f)
+    H.assertEqual(f.housing.sales.createListing(5, 'home', { channel = 'public', price = 5000, biography = 'A home.' }, 1), false)
+    assert(f.housing.sales.assignAgent(1, 'home', 'AGENT', 1))
+    local ok, listing = f.housing.sales.createListing(5, 'home', { channel = 'public', price = 5000, biography = 'A home.' }, 2)
+    assert(ok, listing)
+    local offered, offer = f.housing.sales.submitOffer(2, listing.id, 4000); assert(offered, offer)
+    H.assertEqual(f.housing.sales.decideOffer(1, offer.id, 'accept'), false)
+    H.assertEqual(f.housing.sales.recommendOffer(2, offer.id, 'Good offer.'), false)
+    assert(f.housing.sales.recommendOffer(5, offer.id, 'Good offer.'))
+    assert(f.housing.sales.decideOffer(1, offer.id, 'accept'))
+    f.env.Config.saleCommissions.public.society, f.env.Config.saleCommissions.public.agent = 0.7, 0.2
+    assert(f.housing.sales.completeSale(2, offer.id))
+    H.assertEqual(f.balances.BUYER, 6000); H.assertEqual(f.balances.realestate, 140)
+    H.assertEqual(f.balances.AGENT, 100); H.assertEqual(f.balances.OWNER, 3760)
 end)
 
-h.report('housing purchase')
+H.test('off-market listing creates a named offer and excludes other buyers', function()
+    local f = setup(); freshListings(f)
+    assert(f.housing.sales.assignAgent(1, 'home', 'AGENT', 1))
+    local ok, listing = f.housing.sales.createListing(5, 'home', { channel = 'off_market', buyer = 'BUYER', price = 5000, biography = 'Private viewing.' }, 2)
+    assert(ok, listing)
+    H.assertEqual(f.housing.sales.submitOffer(3, listing.id, 6000), false)
+    local offer
+    for _, row in pairs(f.db.offers) do if row.listing_id == listing.id then offer = row end end
+    assert(offer)
+    H.assertEqual(offer.buyer, 'BUYER'); H.assertEqual(offer.amount, 5000)
+    assert(f.housing.sales.recommendOffer(5, offer.id, 'The named buyer is ready.'))
+    assert(f.housing.sales.decideOffer(1, offer.id, 'accept'))
+    assert(f.housing.sales.completeSale(2, offer.id))
+    H.assertEqual(f.balances.SECOND, 10000); H.assertEqual(f.housing.state.get('home').owner, 'BUYER')
+end)
+
+H.test('owner private listing creates a direct sale without an agent recommendation', function()
+    local f = setup(); freshListings(f)
+    local ok, listing = f.housing.sales.createListing(1, 'home', { channel = 'private', buyer = 'BUYER', price = 5000, biography = 'Direct sale.' }, 1)
+    assert(ok, listing)
+    local offer
+    for _, row in pairs(f.db.offers) do offer = row end
+    assert(f.housing.sales.decideOffer(1, offer.id, 'accept'))
+    assert(f.housing.sales.completeSale(2, offer.id))
+    H.assertEqual(f.balances.OWNER, 5000); H.assertEqual(f.balances.AGENT, nil)
+end)
+
+H.test('an initial public listing lets its realtor review and approve incoming offers', function()
+    local f = setup(); freshListings(f)
+    local property = f.housing.state.get('home'); property.owner, property.state = nil, 'unowned'
+    local ok, listing = f.housing.sales.createListing(5, 'home', { channel = 'public', price = 5000, biography = 'Initial sale.' }, 1)
+    assert(ok, listing)
+    local submitted, offer = f.housing.sales.submitOffer(2, listing.id, 5000); assert(submitted, offer)
+    local view = f.housing.sales.view(5, 'home')
+    H.assertEqual(#view.offers, 1); H.assertEqual(view.offers[1].id, offer.id)
+    assert(f.housing.sales.recommendOffer(5, offer.id, 'Recommend sale.'))
+    assert(f.housing.sales.decideOffer(5, offer.id, 'accept'))
+    assert(f.housing.sales.completeSale(2, offer.id))
+    H.assertEqual(f.housing.state.get('home').owner, 'BUYER')
+end)
+
+H.test('legacy listing edits invalidate the previous quote before republishing and preserve failure behavior', function()
+    local f = setup()
+    local callbacks = {}
+    f.players[1].job = { name = 'realestate' }
+    f.env.QB.callback = { register = function(name, fn) callbacks[name] = fn end }
+    f.env.CreateThread, f.env.RegisterNetEvent = function() end, function() end
+    setmetatable(f.env.exports, { __call = function() end })
+    f.housing.admin, f.housing.doors = {}, {}
+    assert(loadfile('server/ownership.lua', 't', f.env))()
+    assert(loadfile('server/properties.lua', 't', f.env))()
+    assert(loadfile('server/main.lua', 't', f.env))()
+    local saved, err = callbacks['qbhousing:saveProperty'](1, { id = 'home', propertyType = 'house',
+        interior = { type = 'mlo', entrance = { x = 2, y = 2, z = 0 } }, listing = { price = 6000 } })
+    assert(saved, err)
+    H.assertEqual(saved.listing.price, 6000)
+    H.assertEqual(f.db.listings.listing.status, 'cancelled')
+    H.assertEqual(f.db.offers.offer.status, 'cancelled')
+    H.assertEqual(f.housing.sales.completeSale(2, 'offer'), false)
+    H.assertEqual(f.balances.BUYER, 10000)
+    H.assertEqual(f.db.listings[saved.listing.id].price, 6000)
+    f.failSQL = true
+    local failed = callbacks['qbhousing:saveProperty'](1, { id = 'home', listing = { price = 7000 } })
+    H.assertEqual(failed, nil)
+    H.assertEqual(f.housing.state.get('home').listing.price, 6000)
+end)
+
+H.report('housing sales and transaction recovery')

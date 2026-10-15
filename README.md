@@ -1,12 +1,16 @@
 # qbhousing
 
-Server-authoritative QBCore housing and real-estate listings for the test server.
+Housing for qbcore and qblib: a type-aware in-game creator, unlimited ownership and co-ownership, public/private/off-market sales, rolling rentals, protected recovery, inventory upgrades, shared physical interiors, garages, furniture, security cameras, alarms and administrative archival.
 
-## Commands
+Everything uses the existing AppShell and installed framework resources. There is no separate frontend, replacement inventory or property routing bucket. Financial settlement uses confirmed banking operations with a persistent journal and ledger; title and all payment legs commit together.
 
-- `/realestate` opens the market for players and the realtor dashboard for the configured `realestate` job.
-- `/home` opens the homeowner menu.
+`/realestate` opens the market. `/home` opens your accessible properties, offers, agreements and recovery. Realtors and administrators can create properties. Owners manage access, agents, sales and tenancy. Administration includes audit history and a reviewed archival confirmation.
 
-The resource uses qblib for interaction zones, notifications, text prompts, callbacks, and all menu/input UI. It uses the supplied `qbinterior` shell catalog, `qbsql` persistence, QBCore money, `qbbanking` society accounts, and `qbgarages` exports. Property data is stored as JSON so the schema can evolve without losing furniture, stash, wardrobe, or door configuration fields.
+Install the coordinated dependency changes with housing; updating housing alone is insufficient. See [installation, configuration and recovery](docs/OPERATIONS.md) and [executed checks and remaining live acceptance](docs/ACCEPTANCE.md).
 
-The realtor creation flow uses qblib's in-world polygon creator for MLO outside zones. MLO doorlock authoring, furniture placement, stash placement, and clothing placement are intentionally persisted through the server `update` callback but need to be connected to the server's preferred placement/doorlock UI before being exposed to players.
+- [Implemented integration contracts](docs/INTEGRATION_MATRIX.md)
+- [Architecture and selected gameplay policies](docs/IMPLEMENTATION_PLAN.md)
+- [Original repository audit](docs/HOUSING_AUDIT.md)
+- [Historical Phase 1 delivery](docs/PHASE1.md)
+
+The local implementation and automated checks cover the full scope. FiveM multiplayer rendering, optional shell assets, actual dispatch delivery and camera performance still require the live acceptance described in the runbook before production release.
