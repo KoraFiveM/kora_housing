@@ -1,6 +1,7 @@
 -- Shared-scene rendering against controlled streaming and world callbacks.
-Housing = {}
+Housing = {fixtures={clear=function() end,enter=function() end}}
 local checks, entities, geometries, rotations, events, bindings, zones = 0, {}, {}, {}, {}, {}, {}
+local geometryCalls = {}
 local nextEntity, sceneReply, pauseSubscribe, pauseSwitch, switchReply = 10, nil, false, false, nil
 local cams, frozen, controlLeases = {}, false, {}
 local placementCancelled, placementSaves, refreshed, notices = false, 0, 0, {}
@@ -54,7 +55,7 @@ QB = {
     interact = { removeZone = function() end, addBoxZone = function() end },
 }
 exports = { qbinterior = {
-    createGeometry = function() nextEntity = nextEntity + 1; geometries[nextEntity] = true; return { { nextEntity }, {} } end,
+    createGeometry = function(_, origin, exit, model, placement) geometryCalls[#geometryCalls+1]={origin=origin,placement=placement}; nextEntity = nextEntity + 1; geometries[nextEntity] = true; return { { nextEntity }, {} } end,
     removeGeometry = function(_, objects) for _, entity in ipairs(objects) do geometries[entity] = nil end; return true end,
 } }
 dofile('client/world.lua')
@@ -68,7 +69,10 @@ local count, furnitureEntity = 0, nil
 for entity in pairs(entities) do count, furnitureEntity = count + 1, entity end
 check(count == 1 and next(geometries), 'nearby players stream the same server scene with one local shell')
 check(rotations[furnitureEntity][2] == 20, 'shared furniture renders its full persisted rotation')
+sceneReply.interior.placement='legacy'
 events['qbhousing:client:sceneChanged'](sceneReply)
+check(#geometryCalls==2 and geometryCalls[2].placement=='legacy', 'placement changes rebuild geometry through the original stock native')
+check(geometryCalls[2].origin==sceneReply.space.origin, 'configured authoritative origin reaches the geometry provider unchanged')
 check(entities[furnitureEntity], 'an unchanged scene does not rebuild existing furniture')
 sceneReply.furniture[1].revision, sceneReply.furniture[1].rotation.roll = 2, 25
 events['qbhousing:client:sceneChanged'](sceneReply)

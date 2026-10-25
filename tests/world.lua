@@ -65,6 +65,8 @@ QB = { sql = {
     query = function(sql) return rows[sql:match('qbhousing_([%w_]+)')] or {} end,
     single = function(_, values) return values[1] == 'GUEST' and { citizenid = 'GUEST' } or nil end,
 } }
+Housing.legacy = {}
+dofile('server/legacy_fixtures.lua')
 dofile('server/world.lua')
 local W = Housing.world
 local function check(value, message) assert(value, message); checks = checks + 1 end

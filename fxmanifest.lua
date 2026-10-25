@@ -1,5 +1,6 @@
 fx_version 'cerulean'
 game 'gta5'
+provide 'qb-houses'
 lua54 'yes'
 
 name 'qbhousing'
@@ -29,7 +30,10 @@ shared_scripts {
 
 server_scripts {
     'server/state.lua',
+    'server/legacy.lua',
     'server/permissions.lua',
+    'server/compat.lua',
+    'server/compat_sql.lua',
     'server/ownership.lua',
     'server/properties.lua',
     'server/domain.lua',
@@ -38,12 +42,14 @@ server_scripts {
     'server/leases.lua',
     'server/world.lua',
     'server/storage.lua',
+    'server/legacy_fixtures.lua',
     'server/doors.lua',
     'server/admin.lua',
     'server/main.lua',
 }
 
 client_scripts {
+    'client/fixtures.lua',
     'client/world.lua',
     'client/gameplay.lua',
     'client/app.lua',

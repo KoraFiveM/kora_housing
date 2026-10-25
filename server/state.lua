@@ -10,6 +10,7 @@ end
 function State.publicProperty(property)
     local copy = Housing.copy(property)
     if copy then
+        copy.interior = Housing.publicInterior(property)
         copy.coowners, copy.permissionGrants, copy.pending = nil, nil, nil
         if copy.listing and copy.listing.type == 'direct' then copy.listing = nil end
     end

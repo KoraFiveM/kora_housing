@@ -15,3 +15,14 @@ cd "$(dirname "$0")/.."
 "${LUA:-lua}" tests/admin.lua
 "${LUA:-lua}" tests/contracts.lua
 "${LUA:-lua}" tests/reconciliation.lua
+
+"${LUA:-lua}" tests/legacy_access.lua
+
+"${LUA:-lua}" tests/stock_import.lua
+
+"${LUA:-lua}" tests/legacy_sql.lua
+
+"${LUA:-lua}" tests/legacy_fixtures.lua
+"${LUA:-lua}" tests/fixtures_client.lua
+
+"${LUA:-lua}" tests/shell_lifecycle.lua

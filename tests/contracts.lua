@@ -14,6 +14,7 @@ QB = { callback = { register = function(name, fn, options)
     assert(options.rateLimit.max and options.rateLimit.window, 'Callback needs rate limit')
     callbacks[name] = fn
 end }, sql = {}, timers = {} }
+QB.compat = dofile('../qblib/compat/provider.lua')()
 dofile('config.lua'); dofile('shared/schema.lua'); dofile('shared/permissions.lua')
 local function read(path) local f = assert(io.open(path)); local s = f:read('*a'); f:close(); return s end
 local manifest = read('fxmanifest.lua')

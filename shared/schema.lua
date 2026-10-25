@@ -100,3 +100,18 @@ function Housing.validateProperty(value)
     end
     return Housing.normalise(value)
 end
+
+-- Imported stock shells keep their authored CreateObject placement and basement
+-- origin. Do not infer model offsets or let a client choose authoritative bounds.
+function Housing.publicInterior(property)
+    local interior = Housing.copy(property.interior)
+    local legacy = property.legacy
+    if interior then interior.origin, interior.placement = nil, nil end
+    if interior and interior.name == 'CreateGarageMed' and interior.model == 'shell_garagemed' then interior.model = 'shell_garagem' end
+    if interior and interior.type == 'shell' and legacy and legacy.source == 'qb-houses'
+        and Housing.validCoords(legacy.stockShellOrigin) then
+        interior.origin = Housing.copy(legacy.stockShellOrigin)
+        interior.placement = 'legacy'
+    end
+    return interior
+end

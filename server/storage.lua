@@ -37,6 +37,7 @@ local function policy(row)
         if row.status ~= 'active' then return false end
         local property = State.get(row.property_id)
         if not property or property.state == 'archiving' or property.state == 'archived' then return false end
+        if property.legacy and property.legacy.stash and property.legacy.stash.id == row.id and not P.can(src, row.property_id, 'entry') then return false end
         if not row.lease_id and Housing.leases.active(row.property_id) then return false end
         if row.lease_id then
             local lease = Housing.leases.active(row.property_id)
@@ -56,7 +57,8 @@ local function register(row)
     end
     local tier = tonumber(QB.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { property.id }))
     if not tier then return false, 'Storage tier is unavailable.' end
-    local capacity = Config.storageTiers[tier]
+    local legacyStash = property.legacy and property.legacy.stash
+    local capacity = legacyStash and legacyStash.id == row.id and legacyStash.capacity or Config.storageTiers[tier]
     if not capacity then return false, 'Storage tier is not configured.' end
     local position = type(row.coords) == 'string' and json.decode(row.coords) or row.coords
     if row.status == 'recovery' then position = nil end
@@ -92,6 +94,7 @@ function S.configureStash(src, id, payload, revision)
         local count = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL', { id })
         if count == nil or not existing and tonumber(count) >= Config.maxStashes then return false, 'Stash limit reached or storage unavailable.' end
         local changed = Housing.copy(property)
+        if changed.legacy and changed.legacy.stash and changed.legacy.stash.id == stashId then changed.legacy.stash.coords = Housing.copy(payload.coords) end
         local saved, err = State.persist(changed, { actor = P.citizenId(src), action = 'stash.configure' }, {
             { query = 'INSERT INTO `qbhousing_stashes` (`id`,`property_id`,`status`,`coords`) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE `coords`=VALUES(`coords`)', values = { stashId, id, 'active', json.encode(payload.coords) } },
         })
@@ -116,7 +119,8 @@ end
 function S.openStash(src, id, stashId)
     if not P.can(src, id, 'stash.open') then return false, 'You cannot open this property storage.' end
     local lease = Housing.leases.active(id)
-    local expected = lease and 'lease:' .. lease.id or 'p:' .. id
+    local property = State.get(id)
+    local expected = lease and 'lease:' .. lease.id or property and property.legacy and property.legacy.stash and property.legacy.stash.id or 'p:' .. id
     stashId = stashId or expected
     local row = QB.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=? AND `property_id`=?', { stashId, id })
     if not row and not lease and stashId == expected then
@@ -159,9 +163,12 @@ function S.purchaseStorage(src, id)
         if not tier then return false, 'Storage is unavailable.' end
         local nextTier = Config.storageTiers[tier + 1]
         if not nextTier then return false, 'This property already has the largest storage tier.' end
+        local imported = property.legacy and property.legacy.stash and property.legacy.stash.capacity
+        if imported and (nextTier.slots < imported.slots or nextTier.maxWeight < imported.maxWeight) then return false, 'Configure an upgrade above the imported storage capacity.' end
         local key, err = Housing.transactions.nextKey('storage:' .. id .. ':' .. (tier + 1))
         if not key then return false, err end
         local changed = Housing.copy(property); changed.storageTier = tier + 1
+        if changed.legacy and changed.legacy.stash then changed.legacy.stash.capacity = Housing.copy(nextTier) end
         return Housing.transactions.run(key, 'storage.upgrade', cid, changed, { { citizenid = cid, amount = nextTier.price } }, { { account = Config.societyAccount, amount = nextTier.price } }, {
             { query = 'INSERT INTO `qbhousing_storage_purchases` (`property_id`,`tier`,`operation_id`,`buyer`) VALUES (?,?,?,?)', values = { id, tier + 1, key, cid } },
         })

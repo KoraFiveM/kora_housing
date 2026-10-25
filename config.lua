@@ -66,9 +66,28 @@ Config.shells = {
     CreateFurniMid = { label = 'Furnished Apartment', model = 'furnitured_midapart', basePrice = 160000, exit = { x = 1.46, y = -10.33, z = 1.06, w = 0.39 } },
     CreateFurniMotelModern = { label = 'Modern Motel', model = 'modernhotel_shell', basePrice = 140000, exit = { x = 4.98, y = 4.35, z = 1.16, w = 179.79 } },
     CreateFranklinAunt = { label = "Franklin's Aunt's House", model = 'shell_frankaunt', basePrice = 260000, exit = { x = -0.36, y = -5.89, z = 1.7, w = 358.21 } },
-    CreateGarageMed = { label = 'Medium Garage', model = 'shell_garagemed', basePrice = 190000, exit = { x = 13.9, y = 1.63, z = 1.0, w = 87.05 } },
+    CreateGarageMed = { label = 'Medium Garage', model = 'shell_garagem', basePrice = 190000, exit = { x = 13.9, y = 1.63, z = 1.0, w = 87.05 } },
     CreateMichael = { label = "Michael's House", model = 'shell_michael', basePrice = 500000, exit = { x = -9.49, y = 5.54, z = 9.91, w = 270.86 } },
     CreateOffice1 = { label = 'Office', model = 'shell_office1', basePrice = 300000, exit = { x = 1.88, y = 5.06, z = 2.05, w = 180.07 } },
     CreateStore1 = { label = 'Store', model = 'shell_store1', basePrice = 275000, exit = { x = -2.61, y = -4.73, z = 1.08, w = 1.0 } },
+    CreateFurniMotelStandard = { label = 'Standard Motel', model = 'standardmotel_shell', basePrice = 140000, exit = { x = -0.43, y = -2.51, z = 1.0, w = 271.29 } },
     CreateWarehouse1 = { label = 'Warehouse', model = 'shell_warehouse1', basePrice = 425000, exit = { x = -8.95, y = 0.51, z = 1.04, w = 268.82 } },
+}
+
+-- Pinned qb-houses shell tiers. Physical boundaries/fixtures are still
+-- configured through native housing; stock tables contain no boundary data.
+Config.legacyHousing = {
+    minZOffset = 30,
+    -- The pinned stock config defines capacity for tier one only.
+    stashTiers = { [1] = { slots = 50, maxWeight = 1000000 } },
+    shellTiers = {
+        [1] = 'CreateApartmentShell', [2] = 'CreateTier1House',
+        [3] = 'CreateTrevorsShell', [4] = 'CreateCaravanShell',
+        [5] = 'CreateLesterShell', [6] = 'CreateRanchShell',
+        [7] = 'CreateContainer', [8] = 'CreateFurniMid',
+        [9] = 'CreateFurniMotelModern', [10] = 'CreateFranklinAunt',
+        [11] = 'CreateGarageMed', [12] = 'CreateMichael',
+        [13] = 'CreateOffice1', [14] = 'CreateStore1',
+        [15] = 'CreateWarehouse1', [16] = 'CreateFurniMotelStandard',
+    },
 }

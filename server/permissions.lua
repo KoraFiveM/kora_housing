@@ -115,6 +115,14 @@ function Permissions.can(src, value, action)
     return can(property(value), action, data.citizenid, isAdmin(src), isRealtor(data))
 end
 
+-- Read-only server integrations such as legacy garages identify characters by
+-- citizen ID. Use the same entry policy without inferring staff privileges.
+function Permissions.canCitizen(cid, value, action)
+    if type(cid) ~= 'string' or cid == '' or type(action) ~= 'string'
+        or not Housing.permissionActions[action] then return false end
+    return can(property(value), action, cid, false, false)
+end
+
 function Permissions.snapshot(src, value)
     local record = property(value)
     if not record then return nil, 'Property not found.' end

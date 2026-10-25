@@ -1,6 +1,6 @@
 Housing.world = { ready = false, spaces = {}, furniture = {}, cameras = {}, alarms = {}, grants = {} }
 local World, State, Permissions = Housing.world, Housing.state, Housing.permissions
-local placements, viewers, occupants, subscribers = {}, {}, {}, {}
+local placements, viewers, occupants, subscribers, occupantCitizenIds, occupantSessions = {}, {}, {}, {}, {}, {}
 local publishedRevisions = {}
 local serial = 0
 local function uncertain(id) return State.isUncertain and State.isUncertain(id) end
@@ -133,7 +133,8 @@ end
 function World.scene(id)
     local property, space = State.get(id), World.spaces[id]
     if not property or not space then return nil end
-    return { propertyId = id, label = property.label, space = Housing.copy(space), interior = Housing.copy(property.interior),
+    return { propertyId = id, label = property.label, space = Housing.copy(space), interior = Housing.publicInterior(property),
+        fixtures = Housing.legacy.fixtureData(property),
         furniture = items(id, World.furniture, true), cameras = items(id, World.cameras, true) }
 end
 
@@ -617,19 +618,28 @@ function World.enter(src, id)
     local entrance = property.interior and property.interior.entrance
     if not entrance or not near(src, entrance, 5) then return false, 'Use the property entrance.' end
     if not space then
-        if property.interior.type == 'shell' then occupants[src] = id; TriggerClientEvent('qbhousing:client:enterShell', src, State.publicProperty(property)); return true end
+        if property.interior.type == 'shell' then
+            local view = State.publicProperty(property)
+            view.fixtures, view.furniture = Housing.legacy.fixtureData(property), items(id, World.furniture, true)
+            occupants[src], occupantCitizenIds[src], occupantSessions[src] = id, Permissions.citizenId(src), {}; TriggerClientEvent('qbhousing:client:enterShell', src, view); return true
+        end
         return false, 'Configure this physical space first.'
     end
-    occupants[src] = id
+    occupants[src], occupantCitizenIds[src], occupantSessions[src] = id, Permissions.citizenId(src), {}
     subscribers[src] = subscribers[src] or {}; subscribers[src][id] = true
     TriggerClientEvent('qbhousing:client:enteredProperty', src, World.scene(id), entrance)
     if #items(id, World.cameras) > 0 then TriggerClientEvent('qbhousing:client:cameraPresence', src, property.label) end
     return true
 end
 
-function World.leave(src)
+function World.occupies(src, id) return occupants[src] == id and occupantCitizenIds[src] == Permissions.citizenId(src) end
+
+function World.occupancy(src, id) return World.occupies(src, id) and occupantSessions[src] or nil end
+
+function World.leave(src, expectedSession)
+    if expectedSession and occupantSessions[src] ~= expectedSession then return false end
     local id = occupants[src]
-    occupants[src] = nil
+    occupants[src], occupantCitizenIds[src], occupantSessions[src] = nil, nil, nil
     if id and subscribers[src] then subscribers[src][id] = nil end
     closeViewer(src)
     for key, session in pairs(placements) do if session.source == src then cancelPlacement(key, 'You left the property.') end end

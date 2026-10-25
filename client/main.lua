@@ -4,6 +4,9 @@ local leavePrompt
 local interactionZones = {}
 
 local function removeObjects(objects)
+    if #objects == 0 then return end
+    local called, removed = pcall(function() return exports.qbinterior:removeGeometry(objects) end)
+    if called and removed then return end
     for _, object in ipairs(objects) do
         if DoesEntityExist(object) then DeleteEntity(object) end
     end
@@ -13,6 +16,7 @@ local function removeShell()
     local hadProperty = currentProperty ~= nil
     removeObjects(shellObjects)
     shellObjects, currentProperty = {}, nil
+    if Housing.fixtures then Housing.fixtures.clear() end
     if leavePrompt then QB.textui.hide(leavePrompt); leavePrompt = nil end
     if hadProperty then TriggerServerEvent('qbhousing:server:leaveProperty') end
 end
@@ -70,8 +74,9 @@ end)
 RegisterNetEvent('qbhousing:client:enterShell', function(property)
     if currentProperty then return notify('You are already inside a property.', 'error') end
     currentProperty = property
-    local spawn = vector3(property.interior.entrance.x, property.interior.entrance.y, property.interior.entrance.z)
-    local interior = exports['qbinterior']:createShell(vector3(spawn.x, spawn.y, spawn.z), property.interior.exit, property.interior.model)
+    local origin = property.interior.origin or property.interior.entrance
+    local spawn = vector3(origin.x, origin.y, origin.z)
+    local interior = exports['qbinterior']:createGeometry(vector3(spawn.x, spawn.y, spawn.z), property.interior.exit, property.interior.model, 'legacy')
     local objects = type(interior) == 'table' and type(interior[1]) == 'table' and interior[1] or {}
     -- Model streaming can finish after this character has already unloaded.
     if currentProperty ~= property then removeObjects(objects); return end
@@ -81,7 +86,9 @@ RegisterNetEvent('qbhousing:client:enterShell', function(property)
         return notify('The property interior could not be loaded.', 'error')
     end
     shellObjects = objects
+    Housing.fixtures.enter(property.id, property.fixtures, property.furniture)
     SetEntityCoords(PlayerPedId(), spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0), false, false, false, false)
+    SetEntityHeading(PlayerPedId(), property.interior.exit.w or property.interior.exit.h or 0)
 end)
 
 RegisterNetEvent('qbhousing:client:leaveProperty', function()
@@ -96,7 +103,7 @@ CreateThread(function()
         if not currentProperty then Wait(1000) goto continue end
         Wait(0)
         local exit = currentProperty.interior.exit
-        local origin = currentProperty.interior.entrance
+        local origin = currentProperty.interior.origin or currentProperty.interior.entrance
         local coords = GetEntityCoords(PlayerPedId())
         local distance = #(coords - vector3(origin.x + (exit.x or 0.0), origin.y + (exit.y or 0.0), origin.z + (exit.z or 0.0)))
         if distance < 1.5 then

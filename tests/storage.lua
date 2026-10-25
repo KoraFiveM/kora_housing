@@ -17,6 +17,34 @@ H.test('storage authorizes every open and rechecks revoked permissions in existi
     H.assertEqual(f.policies['p:home'](1), false)
 end)
 
+H.test('imported stock stash retains inventory identity, capacity and current access policy', function()
+    local f=setup();stash(f,'home')
+    local p=f.housing.state.get('home')
+    p.legacy={stash={id='home',coords={x=0,y=0,z=0},capacity={slots=50,maxWeight=1000000}}}
+    f.inventory.home={{name='bread',amount=2}}
+    H.assertTrue(f.housing.storage.openStash(1,'home'))
+    H.assertEqual(f.registered.home.maxWeight,1000000)
+    H.assertEqual(f.registered.home.slots,50)
+    H.assertEqual(f.inventory.home[1].amount,2,'existing canonical contents are not copied or replaced')
+    p.permissionGrants.BUYER={entry=true,['stash.open']=true}
+    H.assertTrue(f.policies.home(2))
+    p.permissionGrants.BUYER.entry=false
+    H.assertFalse(f.policies.home(2),'revoked entry also revokes the old stash policy')
+    H.assertFalse(f.housing.storage.purchaseStorage(1,'home'),'do not charge for a downgrade of imported capacity')
+    H.assertEqual(#f.bankCalls,0)
+end)
+
+H.test('configured larger imported-stash upgrade changes real capacity with the paid property transaction', function()
+    local f=setup();stash(f,'home')
+    f.housing.state.get('home').legacy={stash={id='home',coords={x=0,y=0,z=0},capacity={slots=50,maxWeight=1000000}}}
+    f.env.Config.storageTiers[2]={slots=80,maxWeight=2000000,price=10000,label='Larger stock storage'}
+    f.balances.OWNER=50000
+    H.assertTrue(f.housing.storage.purchaseStorage(1,'home'))
+    H.assertEqual(f.housing.state.get('home').legacy.stash.capacity.maxWeight,2000000)
+    H.assertEqual(f.registered.home.maxWeight,2000000);H.assertEqual(f.registered.home.slots,80)
+    H.assertEqual(f.balances.OWNER,40000)
+end)
+
 H.test('sale emptiness requires a completed transfer barrier and unfreezes on rejection', function()
     local f = setup(); stash(f, 'p:home'); assert(f.housing.storage.refresh('home'))
     f.busyStash = 'p:home'

@@ -265,7 +265,7 @@ environment.DoesEntityExist = function(object) return object == 91 end
 environment.DeleteEntity = function() removed = removed + 1 end
 environment.SetEntityCoords = function() teleported = teleported + 1 end
 environment.QB.notify = { send = function() failed = failed + 1 end }
-environment.exports = { qbinterior = { createShell = function()
+environment.exports = { qbinterior = { createGeometry = function()
     events['QBCore:Client:OnPlayerUnload']()
     return { { 91 }, {} }
 end } }
@@ -273,7 +273,7 @@ local shellProperty = worldProperty('shell')
 shellProperty.interior.exit, shellProperty.interior.model = { x = 0, y = 0, z = 0 }, 'shell_v16low'
 events['qbhousing:client:enterShell'](shellProperty)
 check(removed == 1 and teleported == 0, 'a shell finishing after character unload is deleted without teleporting')
-environment.exports.qbinterior.createShell = function() return nil end
+environment.exports.qbinterior.createGeometry = function() return nil end
 events['qbhousing:client:enterShell'](shellProperty)
 check(failed == 1 and teleported == 0, 'an unavailable interior provider reports failure without teleporting')
 

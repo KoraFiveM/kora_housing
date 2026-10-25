@@ -66,7 +66,7 @@ def main():
             migration = (migrations / "002_registry_access.sql").read_text()
             query(migration)
             query(migration)
-            for filename in ("003_economy.sql", "004_world.sql"):
+            for filename in ("003_economy.sql", "004_world.sql", "005_stock_import.sql"):
                 query((migrations / filename).read_text())
                 query((migrations / filename).read_text())
             assert query(fingerprint) == before, "Migration changed legacy source data."
@@ -111,6 +111,70 @@ def main():
                     transaction.append("DEALLOCATE PREPARE housing_statement;")
                 transaction.append("COMMIT;")
                 return "\n".join(transaction)
+
+            stock_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+                local f = dofile('tests/stock_fixture.lua')()
+                assert(f.housing.legacy.importStock())
+                print(f.json.encode(f.writes[1]))
+            """)
+            # The plain-Lua fixture quotes NUL/newlines using Lua escapes.
+            stock_statements = json.loads(stock_capture.stdout.replace("\\\n", "\\n").replace("\\0", "\\u0000"))
+            query(prepared_transaction(stock_statements))
+            assert query("SELECT owner,property_type,revision FROM qbhousing_properties WHERE id='old_home';") == "OWNER\tlegacy\t1"
+            assert query("SELECT allowed FROM qbhousing_permissions WHERE property_id='old_home' AND citizenid='KEY' AND action='entry';") == "1"
+            assert query("SELECT source_sha256=SHA2(source_data,256) FROM qbhousing_stock_import WHERE property_id='old_home';") == "1"
+            stock_backup = json.loads(bytes.fromhex(query("SELECT HEX(source_data) FROM qbhousing_stock_import WHERE property_id='old_home';")).decode())
+            assert stock_backup["player_houses"]["decorations"] == '[{"object":"custom_model"}]'
+            # Native edits win: replay cannot overwrite either ownership or revocation.
+            query("UPDATE qbhousing_properties SET owner='NEW' WHERE id='old_home'; UPDATE qbhousing_permissions SET allowed=0 WHERE property_id='old_home' AND citizenid='KEY';")
+            query(prepared_transaction(stock_statements), succeeds=False)
+            assert query("SELECT owner FROM qbhousing_properties WHERE id='old_home';") == "NEW"
+            assert query("SELECT allowed FROM qbhousing_permissions WHERE property_id='old_home' AND citizenid='KEY' AND action='entry';") == "0"
+            assert query("SELECT COUNT(*) FROM qbhousing_stock_import WHERE property_id='old_home';") == "1"
+
+            fixture_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+                local f = dofile('tests/stock_fixture.lua')()
+                f.locations[1].name='fixture_home';f.owners[1].house='fixture_home'
+                f.owners[1].decorations='[{"hashname":"prop_chair_01a","x":2,"y":3,"z":-26,"rotx":10,"roty":20,"rotz":30}]'
+                f.owners[1].outfit='{"x":3,"y":4,"z":-25}'
+                f.owners[1].logout='{"x":5,"y":6,"z":-25}'
+                assert(f.housing.legacy.importStock());print(f.json.encode(f.writes[1]))
+            """)
+            fixture_statements = json.loads(fixture_capture.stdout.replace("\\\n", "\\n").replace("\\0", "\\u0000"))
+            query(prepared_transaction(fixture_statements))
+            assert query("SELECT id,property_id,status FROM qbhousing_stashes WHERE id='fixture_home';") == "fixture_home\tfixture_home\tactive"
+            assert query("SELECT JSON_VALUE(definition,'$.legacy.stash.capacity.maxWeight'),JSON_VALUE(definition,'$.clothing[0].coords.z'),JSON_VALUE(definition,'$.logout.z') FROM qbhousing_properties WHERE id='fixture_home';") == "1000000\t-25\t-25"
+            assert query("SELECT owner_cid,JSON_VALUE(definition,'$.coords.z'),JSON_VALUE(definition,'$.rotation.roll') FROM qbhousing_furniture WHERE id='stock:fixture_home:1';") == "OWNER\t-26\t20"
+            query(prepared_transaction(fixture_statements), succeeds=False)
+            assert query("SELECT COUNT(*) FROM qbhousing_furniture WHERE property_id='fixture_home';") == "1"
+
+            upgrade_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+                local f = dofile('tests/stock_fixture.lua')()
+                f.locations[1].name='upgrade_home';f.owners[1].house='upgrade_home'
+                f.owners[1].decorations='[{"hashname":"prop_chair_01a","x":2,"y":3,"z":-26,"rotx":10,"roty":20,"rotz":30}]'
+                f.owners[1].outfit='{"x":3,"y":4,"z":-25}';f.owners[1].logout='{"x":5,"y":6,"z":-25}'
+                local convert=f.housing.legacy.prepareFixtures
+                f.housing.legacy.prepareFixtures=function(property) return property,{} end
+                assert(f.housing.legacy.importStock());assert(f.load())
+                f.housing.state.get('upgrade_home').permissionGrants.KEY.entry=false
+                f.housing.legacy.prepareFixtures=convert
+                assert(f.housing.legacy.upgradeFixtures())
+                print(f.json.encode({f.writes[1],f.writes[2]}))
+            """)
+            initial, upgrade = json.loads(upgrade_capture.stdout.replace("\\\n", "\\n").replace("\\0", "\\u0000"))
+            query(prepared_transaction(initial))
+            query("UPDATE qbhousing_permissions SET allowed=0 WHERE property_id='upgrade_home' AND citizenid='KEY' AND action='entry';")
+            assert query("SELECT COUNT(*) FROM qbhousing_stashes WHERE property_id='upgrade_home';") == "0"
+            stash_insert = next(row for row in upgrade if 'INSERT INTO `qbhousing_stashes`' in row['query'])
+            query(prepared_transaction([*upgrade, stash_insert]), succeeds=False)
+            assert query("SELECT revision FROM qbhousing_properties WHERE id='upgrade_home';") == "1"
+            assert query("SELECT COUNT(*) FROM qbhousing_stashes WHERE property_id='upgrade_home';") == "0"
+            assert query("SELECT COUNT(*) FROM qbhousing_furniture WHERE property_id='upgrade_home';") == "0"
+            query(prepared_transaction(upgrade))
+            assert query("SELECT revision,JSON_VALUE(definition,'$.logout.z') FROM qbhousing_properties WHERE id='upgrade_home';") == "2\t-25"
+            assert query("SELECT allowed FROM qbhousing_permissions WHERE property_id='upgrade_home' AND citizenid='KEY' AND action='entry';") == "0"
+            assert query("SELECT COUNT(*) FROM qbhousing_stashes WHERE id='upgrade_home';") == "1"
+            assert query("SELECT COUNT(*) FROM qbhousing_furniture WHERE property_id='upgrade_home';") == "1"
 
             query(prepared_transaction(statements))
             assert query("SELECT owner,revision,ownership_revision FROM qbhousing_properties WHERE id='generated';") == "OWNER\t1\t1"
@@ -182,7 +246,7 @@ def main():
             query("INSERT INTO qbhousing_rent_periods(lease_id,period_start,period_end,amount,status,operation_id) VALUES ('lease',100,86500,100,'paid','period-duplicate');", succeeds=False)
             query("INSERT INTO qbhousing_storage_purchases(property_id,tier,operation_id,buyer) VALUES ('home',2,'storage-1','BUYER');")
             query("INSERT INTO qbhousing_storage_purchases(property_id,tier,operation_id,buyer) VALUES ('home',2,'storage-duplicate','BUYER');", succeeds=False)
-            print(f"Housing migrations: PASS ({version}); repeat application, legacy backup/checksum, actual registry/sale SQL, balanced ledger, collating ID rejection, unique active listings/accepted offers/leases/pending operations/rent periods/storage tiers, foreign keys and rollback.")
+            print(f"Housing migrations: PASS ({version}); repeat application, legacy backup/checksum, actual stock ownership/key/backup and populated fixture import/upgrade with replay and rollback protection, actual registry/sale SQL, balanced ledger, collating ID rejection, unique active listings/accepted offers/leases/pending operations/rent periods/storage tiers, foreign keys and rollback.")
         finally:
             server.terminate()
             try:

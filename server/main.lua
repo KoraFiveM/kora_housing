@@ -27,9 +27,12 @@ CreateThread(function()
         { version = 2, name = 'registry_access', file = 'sql/002_registry_access.sql' },
         { version = 3, name = 'economy', file = 'sql/003_economy.sql' },
         { version = 4, name = 'world', file = 'sql/004_world.sql' },
+        { version = 5, name = 'stock_import', file = 'sql/005_stock_import.sql' },
     })
     if not ok then return print(('^1[qbhousing]^7 migration failed: %s'):format(tostring(err))) end
-    for _, loader in ipairs({ State.load, Housing.sales.importLegacy, Housing.domain.load, Housing.leases.load, Housing.world.load, Housing.transactions.load }) do
+    local imported, importError = Housing.legacy.importStock()
+    if not imported then return print(('^1[qbhousing]^7 stock import failed: %s'):format(tostring(importError))) end
+    for _, loader in ipairs({ State.load, Housing.legacy.upgradeFixtures, Housing.sales.importLegacy, Housing.domain.load, Housing.leases.load, Housing.world.load, Housing.transactions.load }) do
         local loaded, loadErr = loader()
         if not loaded then return print(('^1[qbhousing]^7 load failed: %s'):format(tostring(loadErr))) end
     end
@@ -87,6 +90,7 @@ for name, handler in pairs({
     panic = Housing.world.panic, subscribeSpace = Housing.world.subscribe,
     leaveProperty = Housing.world.leave,
 }) do register(name, handler, name == 'subscribeSpace' and 128 or nil) end
+register('useFixture', function(src, id, kind) return Housing.legacy.useFixture(src, id, kind) end, 5)
 register('recoveryList', Housing.storage.recoveryList)
 register('worldSpaces', function() return true, Housing.world.publicSpaces() end)
 

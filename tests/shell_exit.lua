@@ -19,9 +19,10 @@ function vector3(x, y, z)
 end
 
 dofile('config.lua')
-for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLesterShell' }) do
+Housing={fixtures={enter=function() end,clear=function() end}}
+for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLesterShell', 'CreateGarageMed', 'CreateFurniMotelStandard' }) do
     local events, threads, position, prompt, removed = {}, {}, nil, nil, {}
-    local pressed, shows, hides, created = false, 0, 0, 0
+    local pressed, shows, hides, created, heading = false, 0, 0, 0, nil
     QB = {
         textui = {
             show = function(message, options)
@@ -51,6 +52,7 @@ for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLes
         check(ped == 41, 'move the local player')
         position = vector3(x, y, z)
     end
+    function SetEntityHeading(_, value) heading = value end
     function IsControlJustReleased(group, control)
         check(group == 0 and control == 38, 'preserve the exit control')
         return pressed
@@ -59,8 +61,9 @@ for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLes
     function DeleteEntity(object) removed[#removed + 1] = object end
     exports = {
         qbinterior = {
-            createShell = function(_, origin, exit, model)
-                check(origin.x == 800 and origin.y == -1500 and origin.z == 100, 'retain shell origin')
+            createGeometry = function(_, origin, exit, model, placement)
+                check(placement == 'legacy', 'fallback shell retains stock native placement without early teleport')
+                check(origin.x == 800 and origin.y == -1500 and origin.z == (name == 'CreateFurniMotelStandard' and 70 or 100), 'retain shell origin')
                 check(exit == Config.shells[name].exit and model == Config.shells[name].model, 'retain relative provider arguments')
                 created = created + 1
                 return { { 91 }, { exit = exit } }
@@ -73,10 +76,13 @@ for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLes
     local before = { x = offset.x, y = offset.y, z = offset.z, w = offset.w }
     local property = { id = 'test-home', interior = {
         type = 'shell', entrance = entrance, exit = offset, model = Config.shells[name].model,
+        origin = name == 'CreateFurniMotelStandard' and {x=800,y=-1500,z=70} or nil,
     } }
     events['qbhousing:client:enterShell'](property)
-    local inside = vector3(entrance.x + offset.x, entrance.y + offset.y, entrance.z + offset.z)
+    local origin = property.interior.origin or entrance
+    local inside = vector3(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
     check(#(position - inside) == 0 and created == 1, 'entry uses origin plus offset')
+    check(heading == offset.w, 'entry retains the authored shell heading')
     local function frame()
         local ok, delay = coroutine.resume(threads[1])
         check(ok, tostring(delay))

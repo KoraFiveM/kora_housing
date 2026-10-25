@@ -14,3 +14,5 @@ Install the coordinated dependency changes with housing; updating housing alone 
 - [Historical Phase 1 delivery](docs/PHASE1.md)
 
 The local implementation and automated checks cover the full scope. FiveM multiplayer rendering, optional shell assets, actual dispatch delivery and camera performance still require the live acceptance described in the runbook before production release.
+
+The server `qb-houses:hasKey(identifier, citizenid, house)` export reads native property IDs and the same entry permissions used by housing, including revocations and active leases. Owner lookups validate the character license. The stock importer and exact SQL read bridge project native ownership and supported fixtures; see [stock migration and remaining mapping boundaries](docs/LEGACY_SQL.md). Unchanged stock housing must not run beside this provider.

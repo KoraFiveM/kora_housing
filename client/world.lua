@@ -45,13 +45,13 @@ local function rebuild(record)
     local generation, scene = record.generation, record.scene
     CreateThread(function()
         local function current() return scenes[scene.propertyId] == record and record.generation == generation end
-        local shellKey = scene.space.revision .. ':' .. tostring(scene.interior and scene.interior.model)
+        local shellKey = scene.space.revision .. ':' .. tostring(scene.interior and scene.interior.model) .. ':' .. tostring(scene.interior and scene.interior.placement)
         if (not scene.interior or scene.interior.type ~= 'shell') and #record.shell > 0 then
             deleteShell(record.shell); record.shell, record.shellRevision = {}, nil
         end
         if scene.interior and scene.interior.type == 'shell' and record.shellRevision ~= shellKey then
             deleteShell(record.shell); record.shell = {}
-            local result, err = exports.qbinterior:createGeometry(scene.space.origin, scene.interior.exit, scene.interior.model)
+            local result, err = exports.qbinterior:createGeometry(scene.space.origin, scene.interior.exit, scene.interior.model, scene.interior.placement)
             if not result then if current() then notify(err or 'The shell could not be streamed.', 'error') end; return end
             if not current() then deleteShell(result[1]); return end
             record.shell, record.shellRevision = result[1], shellKey
@@ -122,6 +122,7 @@ function Scene.syncSpaces(definitions)
 end
 
 function Scene.leave(tellServer)
+    Housing.fixtures.clear()
     local previous = visit
     visit = nil
     Scene.stopCamera(tellServer)
@@ -152,6 +153,7 @@ function Scene.enter(scene, entrance)
             SetEntityCoords(PlayerPedId(), exit.x, exit.y, exit.z, false, false, false, false)
             SetEntityHeading(PlayerPedId(), exit.w or 0)
         end
+        Housing.fixtures.enter(scene.propertyId, scene.fixtures)
         local exit = scene.interior and scene.interior.exit
         local coords = entrance
         if scene.interior and scene.interior.type == 'shell' then
@@ -222,6 +224,7 @@ RegisterNetEvent('qbhousing:client:spacesChanged', Scene.syncSpaces)
 RegisterNetEvent('qbhousing:client:sceneChanged', function(scene)
     local record = scene and scenes[scene.propertyId]
     if record then record.scene = scene; rebuild(record) end
+    if scene and visit and visit.propertyId == scene.propertyId then Housing.fixtures.enter(scene.propertyId, scene.fixtures) end
 end)
 RegisterNetEvent('qbhousing:client:enteredProperty', Scene.enter)
 RegisterNetEvent('qbhousing:client:leaveProperty', function() Scene.leave(false) end)
