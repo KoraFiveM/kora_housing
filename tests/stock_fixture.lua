@@ -1,5 +1,5 @@
 return function()
-    local tools = dofile('../qbcore/test/mocks.lua')
+    local tools = dofile('../kora_core/test/mocks.lua')
     local json = { encode = tools.stableEncode, decode = tools.simpleDecode }
     local function copy(v) return json.decode(json.encode(v)) end
     local f = { present = true, rows = {}, markers = {}, grants = {}, writes = {}, stashes = {}, furniture = {},
@@ -56,7 +56,7 @@ return function()
         return {success=true}
     end
     function sql.transaction(statements) apply(statements); return true end
-    env.exports={qbcore={getPlayerByCitizenId=function(_,cid) return f.characters[cid] end,getOfflinePlayerData=function(_,cid) return f.characters[cid] end}}
+    env.exports={kora_core={getPlayerByCitizenId=function(_,cid) return f.characters[cid] end,getOfflinePlayerData=function(_,cid) return f.characters[cid] end}}
     for _,path in ipairs({'config.lua','shared/schema.lua','shared/permissions.lua','server/state.lua','server/legacy.lua','server/legacy_fixtures.lua','server/permissions.lua'}) do
         assert(loadfile(path,'t',env))()
     end

@@ -3,26 +3,28 @@ game 'gta5'
 provide 'qb-houses'
 lua54 'yes'
 
-name 'qbhousing'
+name 'kora_housing'
+-- Keep the legacy resource name resolvable for exports['qbhousing'] callers.
+provide 'qbhousing'
 author 'qbcore2'
 description 'Server-authoritative QBCore housing and real-estate listings'
 version '1.0.0'
 
-dependency 'qblib'
-dependency 'qbsql'
-dependency 'qbcore'
-dependency 'qbinterior'
-dependency 'qbtarget'
-dependency 'qbbanking'
-dependency 'qbinventory'
-dependency 'qbgarages'
-dependency 'qbdoorlock'
-dependency 'qbdispatch'
+dependency 'kora_lib'
+dependency 'kora_sql'
+dependency 'kora_core'
+dependency 'kora_interior'
+dependency 'kora_target'
+dependency 'kora_banking'
+dependency 'kora_inventory'
+dependency 'kora_garages'
+dependency 'kora_doorlock'
+dependency 'kora_dispatch'
 
 shared_scripts {
-    '@qblib/init.lua',
-    '@qbsql/init.lua',
-    '@qbcore/init.lua',
+    '@kora_lib/init.lua',
+    '@kora_sql/init.lua',
+    '@kora_core/init.lua',
     'config.lua',
     'shared/schema.lua',
     'shared/permissions.lua',

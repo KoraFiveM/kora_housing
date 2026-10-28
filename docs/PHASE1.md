@@ -26,9 +26,9 @@ Legacy key mutation now verifies the target character and uses the shared servic
 
 ## Installation and data migration
 
-1. Back up the existing database and resource checkout. Keep the existing qblib, qbsql, qbcore, qbinterior, qbtarget and qbbanking startup dependencies. No new framework dependency is introduced.
+1. Back up the existing database and resource checkout. Keep the existing kora_lib, kora_sql, kora_core, kora_interior, kora_target and kora_banking startup dependencies. No new framework dependency is introduced.
 2. Review Config.propertyTypes and coordinateLimit. Existing command names, commission values, shell catalog and limits remain configured as before. Entrances/vertices outside coordinateLimit are rejected by new edits; adjust it deliberately for custom maps.
-3. Install all manifest-listed files together. Startup applies untouched migration 001 and additive migration 002 through qbsql. This was tested on MariaDB 10.11.14; other database versions require their own migration check.
+3. Install all manifest-listed files together. Startup applies untouched migration 001 and additive migration 002 through kora_sql. This was tested on MariaDB 10.11.14; other database versions require their own migration check.
 4. Startup captures original row JSON/owner plus its SHA-256 in qbhousing_legacy_backup, imports legacy entry keys without overriding an existing denial, then loads authoritative relational relationships.
 5. Invalid JSON, conflicting IDs/owners, malformed nested structures, unknown property types, orphan primary/co-owners, invalid unit parents or cycles stop activation with a diagnostic. Repair against the preserved original data and retry; no invalid property is silently skipped. Existing unclassified records use type legacy and report a classification message. An authorized creator edit assigns their gameplay type without guessing from the shell.
 6. Open /realestate as the configured realestate job or an administrator to create/configure drafts. Owners/co-owners use /home to edit their properties and action grants. Existing owned properties retain title; the Phase 1 creator does not include a new title-transfer operation.
@@ -53,7 +53,7 @@ Configuration fields are id, label, propertyType, parentId, unitLabel, interior,
 
 ## Verification and remaining acceptance
 
-Run the default isolated checks with bash tests/run.sh. They load actual housing services and qblib/core/qbsql code while controlling the FiveM host and transport boundaries. The optional python3 tests/migrations.py starts a separate socket-only MariaDB datadir, exercises real migration/persistence SQL, and removes that instance afterward; it does not use the installed server database or credentials.
+Run the default isolated checks with bash tests/run.sh. They load actual housing services and kora_lib/core/qbsql code while controlling the FiveM host and transport boundaries. The optional python3 tests/migrations.py starts a separate socket-only MariaDB datadir, exercises real migration/persistence SQL, and removes that instance afterward; it does not use the installed server database or credentials.
 
 Final executed results:
 
@@ -68,4 +68,4 @@ Final executed results:
 
 Coverage includes stale revisions, forged ownership/grants, role separation, failed writes, per-property concurrency, parent races, restart restoration, denied legacy keys, migration conflicts, AppShell draft behavior and lifecycle cleanup. Database checks cover migration replay, unchanged legacy definitions, checksum backup, foreign keys, uniqueness, transaction rollback and case-colliding IDs.
 
-Live FiveM/browser acceptance has not been executed. In particular, actual in-game form rendering, model assets, multiplayer movement and resource-stop behavior remain release checks. qbinterior's existing createShell performs its own teleport while loading; the client cleans late returned objects, but geometry-only creation and complete movement cancellation require the planned Phase 4 provider extension. Durable money settlement, rent, recovery transfers, shared furniture, garage/door policies and cameras remain later phases.
+Live FiveM/browser acceptance has not been executed. In particular, actual in-game form rendering, model assets, multiplayer movement and resource-stop behavior remain release checks. kora_interior's existing createShell performs its own teleport while loading; the client cleans late returned objects, but geometry-only creation and complete movement cancellation require the planned Phase 4 provider extension. Durable money settlement, rent, recovery transfers, shared furniture, garage/door policies and cameras remain later phases.

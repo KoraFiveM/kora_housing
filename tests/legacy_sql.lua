@@ -1,5 +1,5 @@
-local h = dofile('../qbcore/test/harness.lua')
-local tools = dofile('../qbcore/test/mocks.lua')
+local h = dofile('../kora_core/test/harness.lua')
+local tools = dofile('../kora_core/test/mocks.lua')
 local json = { encode = tools.stableEncode, decode = tools.simpleDecode }
 local function setup()
     local env = {}; for key, value in pairs(_G) do env[key] = value end
@@ -12,7 +12,7 @@ local function setup()
     function housing.state.isUncertain(id) return housing.state.uncertain[id] end
     housing.world = { ready = true, furniture = {} }
     housing.legacy = {}
-    env.exports = setmetatable({ qbcore = {
+    env.exports = setmetatable({ kora_core = {
         getPlayerByCitizenId = function(_, cid) return f.characters[cid] end,
         getOfflinePlayerData = function(_, cid) return f.characters[cid] end,
     } }, { __call = function(_, name, fn) f.provided[name] = fn end })
@@ -22,7 +22,7 @@ local function setup()
         if f.throwSQL then error('driver stopped') end
         return f.stashes
     end } }
-    env.GetInvokingResource = function() return f.invoker or 'qbsql' end
+    env.GetInvokingResource = function() return f.invoker or 'kora_sql' end
     env.CreateThread = function(fn) fn() end
     env.GetGameTimer = function() return 0 end
     env.Wait = function() error('unexpected wait') end
@@ -113,7 +113,7 @@ h.test('live leases retain native entry policy and export caller cannot be spoof
     f.invoker = 'other'
     f.provided.readLegacyHousing('owners', {}, function(rows, err) result, failure = rows, err end)
     h.assertEqual(result, nil); h.assertTrue(failure:find('restricted', 1, true))
-    f.invoker = 'qbsql'
+    f.invoker = 'kora_sql'
     f.provided.readLegacyHousing('owners', {}, function(rows, err) result, failure = rows, err end)
     h.assertEqual(result[1].house, 'home1'); h.assertEqual(failure, nil)
 end)

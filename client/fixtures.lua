@@ -29,7 +29,7 @@ function Fixtures.enter(id, definitions, decorations)
                         if not ok then notify(result or 'The fixture is unavailable.'); return end
                         if active ~= id or generation ~= current then return end
                         if result == 'outfit' then
-                            local called, opened, err = pcall(function() return exports.qbclothing:OpenWardrobe() end)
+                            local called, opened, err = pcall(function() return exports.kora_clothing:OpenWardrobe() end)
                             if not called or opened == false then notify(err or 'The wardrobe is unavailable.') end
                         end
                     end)

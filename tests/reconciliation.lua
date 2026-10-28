@@ -1,14 +1,14 @@
 -- Actual registry, permissions, leases and world caches after an ambiguous write.
-local helpers = dofile('../qbcore/test/mocks.lua')
+local helpers = dofile('../kora_core/test/mocks.lua')
 json = { encode = helpers.stableEncode, decode = helpers.simpleDecode }
 dofile('config.lua'); dofile('shared/schema.lua'); dofile('shared/permissions.lua')
 local checks, timers, broadcasts, refreshed = 0, {}, 0, 0
 local committed, worldFailure, newerAmbiguity, pendingWorker, readFailure
-function GetCurrentResourceName() return 'qbhousing' end
+function GetCurrentResourceName() return 'kora_housing' end
 function AddEventHandler() end
 function TriggerClientEvent() broadcasts = broadcasts + 1 end
 function SetTimeout() end
-exports = { qbcore = { getPlayer = function(_, src) return { citizenid = src == 1 and 'OWNER' or 'GUEST' } end } }
+exports = { kora_core = { getPlayer = function(_, src) return { citizenid = src == 1 and 'OWNER' or 'GUEST' } end } }
 QB = { permissions = { hasPermission = function() return false end }, timers = {}, sql = { NULL = '__NULL__' } }
 function QB.timers.setTimeout(fn, delay) timers[#timers + 1] = { fn = fn, delay = delay }; return #timers end
 function QB.timers.clearTimeout(id) timers[id] = nil end

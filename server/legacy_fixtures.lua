@@ -147,17 +147,17 @@ function Legacy.useFixture(src, id, kind)
     if not here or (here.x-position.x)^2 + (here.y-position.y)^2 + (here.z-position.z)^2 > 4 then return false, 'Use the fixture inside the property.' end
     if kind == 'stash' then return Housing.storage.openStash(src, id, property.legacy.stash.id) end
     if kind == 'outfit' then
-        if GetResourceState('qbclothing') ~= 'started' then return false, 'Wardrobe is unavailable.' end
+        if GetResourceState('kora_clothing') ~= 'started' then return false, 'Wardrobe is unavailable.' end
         return true, 'outfit'
     end
-    if GetResourceState('qbmultichar') ~= 'started' then return false, 'Character selection is unavailable.' end
+    if GetResourceState('kora_multichar') ~= 'started' then return false, 'Character selection is unavailable.' end
     if Player(src).state['qbmultichar:mode'] then return false, 'Finish the current character selection session first.' end
     local entrance = property.interior and property.interior.entrance
     if not Housing.validCoords(entrance) then return false, 'Property entrance is unavailable.' end
     local occupancy = Housing.world.occupancy(src, id)
     if not occupancy then return false, 'Property visit changed; try again.' end
     local called, loggedOut, failure = pcall(function()
-        return exports.qbcore:logout(src, { position = { x=entrance.x, y=entrance.y, z=entrance.z, h=entrance.w or 0 } })
+        return exports.kora_core:logout(src, { position = { x=entrance.x, y=entrance.y, z=entrance.z, h=entrance.w or 0 } })
     end)
     if not called or loggedOut ~= true then return false, failure or 'Your character could not be saved; logout was cancelled.' end
     Housing.world.leave(src, occupancy)

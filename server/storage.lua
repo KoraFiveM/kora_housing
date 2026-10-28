@@ -3,7 +3,7 @@ local S, D, State, P = Housing.storage, Housing.domain, Housing.state, Housing.p
 
 local function invoke(method, ...)
     local args = table.pack(...)
-    local ok, result, detail = pcall(function() return exports.qbinventory[method](exports.qbinventory, table.unpack(args, 1, args.n)) end)
+    local ok, result, detail = pcall(function() return exports.kora_inventory[method](exports.kora_inventory, table.unpack(args, 1, args.n)) end)
     if not ok then return false, 'Inventory is unavailable.' end
     return result, detail
 end
@@ -13,11 +13,11 @@ local function coords(property)
 end
 
 function S.ensureEscrow()
-    local ok, account = pcall(function() return exports.qbbanking:GetAccount(Config.escrowAccount) end)
+    local ok, account = pcall(function() return exports.kora_banking:GetAccount(Config.escrowAccount) end)
     if ok and account then return true end
-    local created, result = pcall(function() return exports.qbbanking:CreateJobAccount(Config.escrowAccount, 0) end)
+    local created, result = pcall(function() return exports.kora_banking:CreateJobAccount(Config.escrowAccount, 0) end)
     if not created or not result then
-        local found, existing = pcall(function() return exports.qbbanking:GetAccount(Config.escrowAccount) end)
+        local found, existing = pcall(function() return exports.kora_banking:GetAccount(Config.escrowAccount) end)
         if not found or not existing then return false, 'Deposit escrow is unavailable.' end
     end
     return true
@@ -143,7 +143,7 @@ function S.freezeForSale(id)
     for _, row in ipairs(rows) do
         local ok, blockedErr = invoke('SetStashBlocked', row.id, true)
         if not ok then S.unfreeze(id); return false, blockedErr end
-        local read, items = pcall(function() return exports.qbinventory:GetStashItems(row.id) end)
+        local read, items = pcall(function() return exports.kora_inventory:GetStashItems(row.id) end)
         if not read or type(items) ~= 'table' or next(items) then S.unfreeze(id); return false, 'Empty all owner stashes before selling the property.' end
     end
     return true
@@ -192,8 +192,8 @@ function S.recoverLease(lease)
 end
 
 function S.notifyRecovery(lease)
-    if GetResourceState('qbphone') ~= 'started' then return end
-    pcall(function() exports.qbphone:sendMailToOffline(lease.tenant, { sender = 'Property recovery', subject = 'Your property belongings are protected', message = 'Your lease has ended. Open Housing recovery to collect your belongings. They do not expire.' }) end)
+    if GetResourceState('kora_phone') ~= 'started' then return end
+    pcall(function() exports.kora_phone:sendMailToOffline(lease.tenant, { sender = 'Property recovery', subject = 'Your property belongings are protected', message = 'Your lease has ended. Open Housing recovery to collect your belongings. They do not expire.' }) end)
 end
 
 function S.recoveryList(src)
@@ -253,7 +253,7 @@ function S.registerGarage(id)
     local lease, owners = Housing.leases.active(id), D.owners(property)
     if lease then owners = { lease.tenant } end
     local ok, result, err = pcall(function()
-        return exports.qbgarages:RegisterPropertyGarage(key, { label = property.label, coords = property.garage.coords, spawn = property.garage.spawn,
+        return exports.kora_garages:RegisterPropertyGarage(key, { label = property.label, coords = property.garage.coords, spawn = property.garage.spawn,
             slots = property.garage.slots, capacityOwnerIds = owners, retrievalOnly = property.state == 'archived' }, function(src, action)
                 if Housing.transactions.busy(id) or State.isUncertain and State.isUncertain(id) then return false end
                 if P.can(src, id, 'garage.' .. action) then return true end
@@ -309,7 +309,7 @@ function S.archive(id)
     if not rows then return false, err end
     if #rows > 0 and not property.owner then
         for _, row in ipairs(rows) do
-            local read, items = pcall(function() return exports.qbinventory:GetStashItems(row.id) end)
+            local read, items = pcall(function() return exports.kora_inventory:GetStashItems(row.id) end)
             if not read or type(items) ~= 'table' or next(items) then return false, 'An administrator must assign ownership before archiving unowned storage with belongings.' end
         end
     end

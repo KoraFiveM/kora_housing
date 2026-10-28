@@ -4,7 +4,7 @@ local resource, editing = GetCurrentResourceName(), false
 
 local function invoke(method, ...)
     local args = table.pack(...)
-    local ok, value, err = pcall(function() return exports.qbdoorlock[method](exports.qbdoorlock, table.unpack(args, 1, args.n)) end)
+    local ok, value, err = pcall(function() return exports.kora_doorlock[method](exports.kora_doorlock, table.unpack(args, 1, args.n)) end)
     if not ok then return false, 'Door locks are unavailable.' end
     return value, err
 end
@@ -27,7 +27,7 @@ local function callback(propertyId)
             or State.isUncertain and State.isUncertain(propertyId)
             or Housing.transactions and Housing.transactions.busy(propertyId) or not hasDoor(property, id) then return false end
         if context.lockpick then
-            -- qbdoorlock checks items and consumes the server-issued minigame proof.
+            -- kora_doorlock checks items and consumes the server-issued minigame proof.
             return Config.allowDoorLockpick ~= false and context.authorised == true
         end
         return P.can(src, propertyId, 'entry') == true

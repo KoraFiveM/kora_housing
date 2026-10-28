@@ -80,7 +80,7 @@ def main():
 
             capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
                 function AddEventHandler() end
-                local tools = dofile('../qbcore/test/mocks.lua')
+                local tools = dofile('../kora_core/test/mocks.lua')
                 json = { encode = tools.stableEncode, decode = tools.simpleDecode }
                 QB = { sql = { NULL = '\\0qbsql:null\\0' } }
                 QB.sql.transactionChecked = function(statements) print(json.encode(statements)); return {success=true} end

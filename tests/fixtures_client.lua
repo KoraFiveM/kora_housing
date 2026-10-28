@@ -3,7 +3,7 @@ Housing={}
 local checks,zones,objects,events,requests,wardrobes,removed,notices=0,{},{},{},{},0,0,{}
 local allow,pause,thread=true,false,nil
 function AddEventHandler(name,fn) events[name]=fn end
-function GetCurrentResourceName() return 'qbhousing' end
+function GetCurrentResourceName() return 'kora_housing' end
 function CreateThread(fn)
     local co=coroutine.create(fn);local ok,err=coroutine.resume(co);assert(ok,err)
     if coroutine.status(co)~='dead' then thread=co end
@@ -21,7 +21,7 @@ QB={notify={send=function(data) notices[#notices+1]=data end},
         if pause then coroutine.yield() end
         local id=#objects+1;objects[id]={model=model,coords=coords};return id
     end,remove=function(id) objects[id]=nil;removed=removed+1 end}}
-exports={qbclothing={OpenWardrobe=function() wardrobes=wardrobes+1 end}}
+exports={kora_clothing={OpenWardrobe=function() wardrobes=wardrobes+1 end}}
 dofile('client/fixtures.lua')
 local function check(value,why) assert(value,why);checks=checks+1 end
 local definitions={stash={x=1,y=2,z=-27},outfit={x=3,y=4,z=-26},logout={x=5,y=6,z=-25}}
@@ -42,6 +42,6 @@ check(next(objects)==nil,'late model load after leave cannot leak a decoration')
 pause=false;Housing.fixtures.enter('home',definitions,furniture)
 events['QBCore:Client:OnPlayerUnload']()
 check(next(zones)==nil and next(objects)==nil,'character unload releases fixture resources')
-Housing.fixtures.enter('home',definitions,furniture);events.onClientResourceStop('qbhousing')
+Housing.fixtures.enter('home',definitions,furniture);events.onClientResourceStop('kora_housing')
 check(next(zones)==nil and next(objects)==nil,'resource stop releases fixture resources')
 print(('housing fixture client: %d checks passed'):format(checks))

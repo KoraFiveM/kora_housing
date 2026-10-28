@@ -1,4 +1,4 @@
-local h = dofile('../qbcore/test/harness.lua')
+local h = dofile('../kora_core/test/harness.lua')
 local setup = dofile('tests/stock_fixture.lua')
 
 h.test('stock ownership and keys load into the native authority with lossless source backup', function()

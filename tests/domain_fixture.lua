@@ -1,5 +1,5 @@
 -- Runs real domain services; substitutes SQL/financial transport and the host.
-local tools = dofile('../qbcore/test/mocks.lua')
+local tools = dofile('../kora_core/test/mocks.lua')
 local json = { encode = tools.stableEncode, decode = tools.simpleDecode }
 local function copy(value) return json.decode(json.encode(value)) end
 local function has(text, part) return text:find(part, 1, true) ~= nil end
@@ -10,7 +10,7 @@ return function(options)
         inventory = {}, policies = {}, blocks = {}, inventoryReceipts = {}, delivered = 0, sequence = 0, timers = {}, events = {}, registered = {}, calls = {} }
     local env = {}; for key, value in pairs(_G) do env[key] = value end
     env.Housing, env.Config, env.json = nil, nil, json
-    env.GetCurrentResourceName = function() return 'qbhousing' end
+    env.GetCurrentResourceName = function() return 'kora_housing' end
     env.GetResourceState = function() return 'missing' end
     env.TriggerClientEvent, env.GetPlayerPed = function() end, function(src) return src end
     env.AddEventHandler = function(name, fn) f.events[name] = fn end
@@ -168,7 +168,7 @@ return function(options)
         if f.afterClaim then f.afterClaim() end; return true, copy(receipt)
     end
     function garages.RegisterPropertyGarage(_, id, definition, callback) f.garage = { id = id, definition = copy(definition), callback = callback }; return true end
-    env.exports = { qbbanking = banking, qbinventory = inventory, qbgarages = garages, qbcore = {
+    env.exports = { kora_banking = banking, kora_inventory = inventory, kora_garages = garages, kora_core = {
         getPlayer = function(_, src) return players[src] end,
         getPlayerByCitizenId = function(_, cid) for _, player in pairs(players) do if player.citizenid == cid then return player end end end,
         getOfflinePlayerData = function() return nil end } }

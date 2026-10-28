@@ -584,7 +584,7 @@ local function dispatchAlarm(src, id, trigger)
         value.lastAlertAt = os.time()
         local ok, err = saveAlarm(src, id, value, 'alarm.trigger')
         if not ok then return false, err end
-        local sent, callId, reason = pcall(function() return exports.qbdispatch:createCall({ jobs = { 'police' }, code = 'HSG-ALARM', title = 'Property alarm',
+        local sent, callId, reason = pcall(function() return exports.kora_dispatch:createCall({ jobs = { 'police' }, code = 'HSG-ALARM', title = 'Property alarm',
             message = property.label .. (trigger == 'panic' and ' · Panic alarm' or ' · Unauthorized door access'), coords = here, priority = 2, duration = 120000, data = { propertyId = id, trigger = trigger } }) end)
         if not sent or not callId then return false, reason or 'Dispatch is unavailable; the alarm event was recorded.' end
         return true, { callId = callId }

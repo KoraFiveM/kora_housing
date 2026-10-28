@@ -1,4 +1,4 @@
-local h = dofile('../qbcore/test/harness.lua')
+local h = dofile('../kora_core/test/harness.lua')
 local setup = dofile('tests/stock_fixture.lua')
 local function fixture()
     local f=setup()
@@ -6,13 +6,13 @@ local function fixture()
     f.owners[1].logout='{"x":4,"y":5,"z":6}'
     h.assertTrue(f.housing.legacy.importStock());h.assertTrue(f.load())
     f.current='OWNER'; f.position={x=1,y=2,z=3};f.events={};f.opens={};f.states={}
-    f.env.exports.qbcore.getPlayer=function() return {citizenid=f.current} end
-    f.env.exports.qbcore.logout=function(_,src,options) f.logout={src,options};return not f.failLogout, f.failLogout and 'durability failure' or nil end
+    f.env.exports.kora_core.getPlayer=function() return {citizenid=f.current} end
+    f.env.exports.kora_core.logout=function(_,src,options) f.logout={src,options};return not f.failLogout, f.failLogout and 'durability failure' or nil end
     f.env.QB.permissions={hasPermission=function() return false end}
     f.housing.transactions={busy=function() return f.busy or false end}
     f.env.GetPlayerPed=function() return 1 end
     f.env.GetEntityCoords=function() return f.position end
-    f.env.GetCurrentResourceName=function() return 'qbhousing' end
+    f.env.GetCurrentResourceName=function() return 'kora_housing' end
     f.env.GetResourceState=function(name) return f.stopped==name and 'stopped' or 'started' end
     f.env.Player=function() return {state=f.states} end
     f.env.TriggerClientEvent=function(name,target,value) f.events[#f.events+1]={name,target,value} end
@@ -44,7 +44,7 @@ h.test('fixtures require native occupancy, current access, readiness and actual 
     f.position.z=6;f.busy=true;h.assertFalse(use(1,'old_home','outfit'));f.busy=false
     f.housing.state.ready=false;h.assertFalse(use(1,'old_home','stash'));f.housing.state.ready=true
     f.current='KEY';h.assertFalse(use(1,'old_home','stash'))
-    f.current='OWNER';f.stopped='qbclothing';h.assertFalse(use(1,'old_home','outfit'))
+    f.current='OWNER';f.stopped='kora_clothing';h.assertFalse(use(1,'old_home','outfit'))
     h.assertFalse(use(1,'old_home','invented'))
     f.housing.world.leave(1);h.assertFalse(use(1,'old_home','stash'))
 end)
@@ -80,7 +80,7 @@ h.test('logout completion does not clear a replacement visit across the provider
     local f=fixture();local world=f.housing.world
     h.assertTrue(world.enter(1,'old_home'));f.position={x=4,y=5,z=6}
     local original=world.occupancy(1,'old_home')
-    f.env.exports.qbcore.logout=function()
+    f.env.exports.kora_core.logout=function()
         world.leave(1)
         f.position={x=1,y=2,z=3}
         h.assertTrue(world.enter(1,'old_home'),'same source and citizen may start a different visit')

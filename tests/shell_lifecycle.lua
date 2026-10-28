@@ -1,17 +1,17 @@
 -- Actual interior geometry provider and housing entry client share one delayed
 -- model stream. A character unload must prevent every teleport side effect.
-package.path='../qblib/test/?.lua;'..package.path
+package.path='../kora_lib/test/?.lua;'..package.path
 local net=require('mocks').install()
-local resource='qbinterior'
+local resource='kora_interior'
 function GetCurrentResourceName() return resource end
-function GetInvokingResource() return 'qbhousing' end
-dofile('../qblib/build/initiate.lua')
-dofile('../qblib/modules/util/shared.lua')
-dofile('../qblib/local/resources/client.lua')
-QB.compat=dofile('../qblib/compat/provider.lua')()
+function GetInvokingResource() return 'kora_housing' end
+dofile('../kora_lib/build/initiate.lua')
+dofile('../kora_lib/modules/util/shared.lua')
+dofile('../kora_lib/local/resources/client.lua')
+QB.compat=dofile('../kora_lib/compat/provider.lua')()
 local provided,entities,threads,moves={}, {}, {}, {}
 local fades,fixtureEntries,pausing,nextEntity=0,0,true,10
-exports=setmetatable({qbinterior=setmetatable({}, {__index=function(_,name) return function(_,...) return provided[name](...) end end})},
+exports=setmetatable({kora_interior=setmetatable({}, {__index=function(_,name) return function(_,...) return provided[name](...) end end})},
     {__call=function(_,name,fn) provided[name]=fn end})
 function vector3(x,y,z) return {x=x,y=y,z=z} end
 function vector4(x,y,z,w) return {x=x,y=y,z=z,w=w} end
@@ -31,8 +31,8 @@ QB.visuals={fade=function() fades=fades+1 end}
 QB.interact={removeZone=function() end}
 QB.textui={hide=function() end}
 QB.notify={send=function() end}
-dofile('../qbinterior/client/main.lua')
-resource='qbhousing'
+dofile('../kora_interior/client/main.lua')
+resource='kora_housing'
 Housing={fixtures={clear=function() end,enter=function() fixtureEntries=fixtureEntries+1 end},app={close=function() end}}
 dofile('config.lua');dofile('client/main.lua')
 local checks=0

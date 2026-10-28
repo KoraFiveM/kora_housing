@@ -2,11 +2,11 @@
 
 ## Install the coordinated resources
 
-This implementation changes qbhousing and the installed qbcore, qbsql, qbbanking, qbinventory, qbgarages, qbdoorlock, qbinterior, qblib and qbdispatch. Keep these changes together. Existing public dependency interfaces remain available; housing uses the additive authoritative interfaces documented in the integration matrix.
+This implementation changes kora_housing and the installed kora_core, kora_sql, kora_banking, kora_inventory, kora_garages, kora_doorlock, kora_interior, kora_lib and kora_dispatch. Keep these changes together. Existing public dependency interfaces remain available; housing uses the additive authoritative interfaces documented in the integration matrix.
 
 1. Back up the database and the current versions of all changed resources. Use a maintenance window for the coordinated update.
-2. Keep the framework's existing dependency startup order. qblib/qbsql/qbcore, inventory, target, banking, doors, garages, interior and dispatch must start before qbhousing; qbbanking also retains its existing qbtheme dependency. Optional qbphone only supplies mail notices.
-3. Install the rebuilt qbsql bundle included in the working tree. Its build command is `npm run build` in qbsql when changing the driver source.
+2. Keep the framework's existing dependency startup order. kora_lib/kora_sql/qbcore, inventory, target, banking, doors, garages, interior and dispatch must start before kora_housing; kora_banking also retains its existing kora_theme dependency. Optional kora_phone only supplies mail notices.
+3. Install the rebuilt kora_sql bundle included in the working tree. Its build command is `npm run build` in kora_sql when changing the driver source.
 4. Let the existing resource migration runners apply their additive migrations. Do not import SQL manually as well. New files include core `010_player_column_operations.sql`, banking `001_durable_operations.sql`, inventory `002_recovery_operations.sql`, garages `001_property_garages.sql`, and housing `002_registry_access.sql`, `003_economy.sql`, `004_world.sql`. Existing migration files are unchanged.
 5. Confirm the configured real-estate society account exists. The deposit escrow account is created on the first deposit-bearing acceptance. `qbbanking.Config.transactionCallers.qbhousing` and `qbdispatch.Config.trustedCallers.qbhousing` are enabled in this change.
 6. Start housing and check startup diagnostics. Invalid legacy identity, missing owners, invalid parent relationships or corrupt world records stop activation. Initial inventory/door readiness is retried; mapped integrations fail closed until their owning policy is rebound.
@@ -20,7 +20,7 @@ Open `/realestate` as an authorized real-estate agent or administrator, select N
 
 Configure entrances, MLO exits, optional garage coordinates/spawn/capacity and exterior bounds using the shared fields and polygon creator. On the property's furniture/security tab, configure the physical space. Shells require an explicit world origin and bounds containing the shell exit. Author distinct non-overlapping spaces for separate private layouts; all occupants and nearby viewers of one space see the same furniture. Land can have storage, garages, furniture and security within its authored bounds.
 
-Use storage configuration for the stash fixture and door configuration to link existing qbdoorlock IDs. Housing never deletes the referenced doors. Door creation remains in qbdoorlock's existing authoring tools. Furniture uses the shared placement editor, free camera, rotation, surface raycast and numeric adjustments. Confirming persists the transform; cancellation, revocation, unload and stop remove previews.
+Use storage configuration for the stash fixture and door configuration to link existing kora_doorlock IDs. Housing never deletes the referenced doors. Door creation remains in kora_doorlock's existing authoring tools. Furniture uses the shared placement editor, free camera, rotation, surface raycast and numeric adjustments. Confirming persists the transform; cancellation, revocation, unload and stop remove previews.
 
 A new property is an unowned draft. An agent publishes its initial listing, reviews the buyer's offer and approves it. A buyer completes payment only after the required approval. For an owned property, owners assign the selling agent; direct private sales need no agent. Every owner must approve the exact accepted offer and current ownership revision.
 

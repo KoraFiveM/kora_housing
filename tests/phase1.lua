@@ -1,7 +1,7 @@
 -- Phase 1 behavior under plain Lua: real housing validation, permissions and
 -- persistence; only framework identities, transport and SQL are controlled.
-local h = dofile('../qbcore/test/harness.lua')
-local jsonTools = dofile('../qbcore/test/mocks.lua')
+local h = dofile('../kora_core/test/harness.lua')
+local jsonTools = dofile('../kora_core/test/mocks.lua')
 local json = { encode = jsonTools.stableEncode, decode = jsonTools.simpleDecode }
 local owner, coowner, keyholder, outsider, realtor, admin = 1, 2, 3, 4, 5, 6
 local ids = { 'OWNER', 'COOWNER', 'KEYHOLDER', 'OUTSIDER', 'REALTOR', 'ADMIN' }
@@ -29,7 +29,7 @@ local function setup()
     local env = {}
     for key, value in pairs(_G) do env[key] = value end
     env.json, env.Config, env.Housing = json, nil, nil
-    env.GetCurrentResourceName = function() return 'qbhousing' end
+    env.GetCurrentResourceName = function() return 'kora_housing' end
     env.GetInvokingResource = function() return nil end
     env.CreateThread = function() end
     env.AddEventHandler = function() end
@@ -86,7 +86,7 @@ local function setup()
         if cid == 'OFFLINE' then return { citizenid = cid } end
         return nil
     end
-    env.exports = setmetatable({ qbcore = core }, {
+    env.exports = setmetatable({ kora_core = core }, {
         __call = function(_, name, fn) f.provided[name] = fn end,
     })
     function f.load(path)
@@ -401,12 +401,12 @@ end)
 h.test('character lookup cannot change the acting character or substitute the target', function()
     local f = setup()
     local before = json.encode(f.state.properties.home)
-    f.env.exports.qbcore.getPlayerByCitizenId = function() return { citizenid = 'WRONG_TARGET' } end
+    f.env.exports.kora_core.getPlayerByCitizenId = function() return { citizenid = 'WRONG_TARGET' } end
     h.assertFalse(f.ownership.setCoowner(owner, 'home', 'add', 'OFFLINE', 1))
     unchanged(f, before)
-    f.env.exports.qbcore.getPlayerByCitizenId = function()
-        local original = f.env.exports.qbcore.getPlayer
-        f.env.exports.qbcore.getPlayer = function(_, src)
+    f.env.exports.kora_core.getPlayerByCitizenId = function()
+        local original = f.env.exports.kora_core.getPlayer
+        f.env.exports.kora_core.getPlayer = function(_, src)
             if src == owner then return { citizenid = ids[outsider], source = src, job = { name = 'unemployed' } } end
             return original(nil, src)
         end

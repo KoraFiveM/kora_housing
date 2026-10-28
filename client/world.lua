@@ -14,7 +14,7 @@ end
 
 local function deleteShell(objects)
     if #objects == 0 then return end
-    local ok, removed = pcall(function() return exports.qbinterior:removeGeometry(objects) end)
+    local ok, removed = pcall(function() return exports.kora_interior:removeGeometry(objects) end)
     if ok and removed then return end
     for _, object in ipairs(objects) do if DoesEntityExist(object) then DeleteEntity(object) end end
 end
@@ -51,7 +51,7 @@ local function rebuild(record)
         end
         if scene.interior and scene.interior.type == 'shell' and record.shellRevision ~= shellKey then
             deleteShell(record.shell); record.shell = {}
-            local result, err = exports.qbinterior:createGeometry(scene.space.origin, scene.interior.exit, scene.interior.model, scene.interior.placement)
+            local result, err = exports.kora_interior:createGeometry(scene.space.origin, scene.interior.exit, scene.interior.model, scene.interior.placement)
             if not result then if current() then notify(err or 'The shell could not be streamed.', 'error') end; return end
             if not current() then deleteShell(result[1]); return end
             record.shell, record.shellRevision = result[1], shellKey
@@ -243,5 +243,5 @@ end
 
 AddEventHandler('QBCore:Client:OnPlayerUnload', Scene.clear)
 AddEventHandler('onClientResourceStop', function(resource)
-    if resource == GetCurrentResourceName() or resource == 'qbinterior' or resource == 'qblib' then Scene.clear() end
+    if resource == GetCurrentResourceName() or resource == 'kora_interior' or resource == 'kora_lib' then Scene.clear() end
 end)

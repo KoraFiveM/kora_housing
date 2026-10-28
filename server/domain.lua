@@ -12,7 +12,7 @@ end
 function D.character(cid)
     if type(cid) ~= 'string' or #cid < 1 or #cid > 50 then return false, 'Choose a valid character.' end
     local ok, data = pcall(function()
-        return exports.qbcore:getPlayerByCitizenId(cid) or exports.qbcore:getOfflinePlayerData(cid)
+        return exports.kora_core:getPlayerByCitizenId(cid) or exports.kora_core:getOfflinePlayerData(cid)
     end)
     if not ok then return false, 'Character lookup is unavailable.' end
     return type(data) == 'table' and data.citizenid == cid, 'Character was not found.'

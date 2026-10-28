@@ -370,14 +370,14 @@ function Gameplay.action(action, context, view)
     if action == 'storage:upgrade' then return result(request('purchaseStorage', id)) end
     if action == 'storage:garage' then
         local grant, err = request('openGarage', id)
-        if grant then exports.qbgarages:openGarage(grant.garageId or grant.id); return {} end
+        if grant then exports.kora_garages:openGarage(grant.garageId or grant.id); return {} end
         return result(nil, err)
     end
     if action == 'recovery:claim' then return result(request('claimRecovery', itemId)) end
     if action == 'recovery:garage' then
         local entitlement = find((snapshot.inbox or {}).recoveries, itemId)
         local grant, err = request('openGarage', entitlement.property_id)
-        if grant then exports.qbgarages:openGarage(grant.garageId or grant.id); return {} end
+        if grant then exports.kora_garages:openGarage(grant.garageId or grant.id); return {} end
         return result(nil, err)
     end
     if action == 'recovery:furniture' then

@@ -5,7 +5,7 @@ local interactionZones = {}
 
 local function removeObjects(objects)
     if #objects == 0 then return end
-    local called, removed = pcall(function() return exports.qbinterior:removeGeometry(objects) end)
+    local called, removed = pcall(function() return exports.kora_interior:removeGeometry(objects) end)
     if called and removed then return end
     for _, object in ipairs(objects) do
         if DoesEntityExist(object) then DeleteEntity(object) end
@@ -76,7 +76,7 @@ RegisterNetEvent('qbhousing:client:enterShell', function(property)
     currentProperty = property
     local origin = property.interior.origin or property.interior.entrance
     local spawn = vector3(origin.x, origin.y, origin.z)
-    local interior = exports['qbinterior']:createGeometry(vector3(spawn.x, spawn.y, spawn.z), property.interior.exit, property.interior.model, 'legacy')
+    local interior = exports['kora_interior']:createGeometry(vector3(spawn.x, spawn.y, spawn.z), property.interior.exit, property.interior.model, 'legacy')
     local objects = type(interior) == 'table' and type(interior[1]) == 'table' and interior[1] or {}
     -- Model streaming can finish after this character has already unloaded.
     if currentProperty ~= property then removeObjects(objects); return end

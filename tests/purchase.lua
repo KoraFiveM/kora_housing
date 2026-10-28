@@ -1,4 +1,4 @@
-local H = dofile('../qbcore/test/harness.lua')
+local H = dofile('../kora_core/test/harness.lua')
 local setup = dofile('tests/domain_fixture.lua')
 
 H.test('sale commits one balanced journal, transfers ownership and clears old access', function()

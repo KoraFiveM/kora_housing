@@ -4,7 +4,7 @@ Recorded 15 October 2026. The complete local implementation is present. Results 
 
 ## Executed housing checks
 
-Run `bash tests/run.sh` inside qbhousing. The runner exercises actual housing source and actual qblib AppShell validation; framework natives, transport and most database/payment responses use controlled fixtures.
+Run `bash tests/run.sh` inside kora_housing. The runner exercises actual housing source and actual kora_lib AppShell validation; framework natives, transport and most database/payment responses use controlled fixtures.
 
 | Suite | Executed result | Coverage |
 | --- | --- | --- |

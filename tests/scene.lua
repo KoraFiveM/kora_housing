@@ -20,7 +20,7 @@ end
 function RegisterNetEvent(name, handler) events[name] = handler end
 function AddEventHandler(name, handler) events[name] = handler end
 function TriggerServerEvent(name, ...) sceneEvents[#sceneEvents + 1] = { name, ... } end
-function GetCurrentResourceName() return 'qbhousing' end
+function GetCurrentResourceName() return 'kora_housing' end
 function DoesEntityExist(entity) return entity == 1 or entities[entity] or geometries[entity] end
 function DeleteEntity(entity) entities[entity], geometries[entity] = nil, nil end
 function SetEntityRotation(entity, pitch, roll, yaw) rotations[entity] = { pitch, roll, yaw } end
@@ -54,7 +54,7 @@ QB = {
     instructional = { show = function() return { hide = function() end } end },
     interact = { removeZone = function() end, addBoxZone = function() end },
 }
-exports = { qbinterior = {
+exports = { kora_interior = {
     createGeometry = function(_, origin, exit, model, placement) geometryCalls[#geometryCalls+1]={origin=origin,placement=placement}; nextEntity = nextEntity + 1; geometries[nextEntity] = true; return { { nextEntity }, {} } end,
     removeGeometry = function(_, objects) for _, entity in ipairs(objects) do geometries[entity] = nil end; return true end,
 } }
@@ -106,7 +106,7 @@ frozen = false
 pauseSubscribe = false
 zones[1].onEnter()
 QB.entities.remove = function() error('qblib already stopped') end
-exports.qbinterior.removeGeometry = function() error('qbinterior already stopped') end
+exports.kora_interior.removeGeometry = function() error('qbinterior already stopped') end
 Housing.scene.clear()
 check(not next(entities) and not next(geometries) and zones[1].removed, 'character/resource cleanup removes the scene and its spatial registration')
 dofile('config.lua')

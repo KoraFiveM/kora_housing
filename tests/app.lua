@@ -1,11 +1,11 @@
--- Exercise housing definitions through qblib's real AppShell validator and routes.
-package.path = '../qblib/test/?.lua;' .. package.path
+-- Exercise housing definitions through kora_lib's real AppShell validator and routes.
+package.path = '../kora_lib/test/?.lua;' .. package.path
 local mocks = require('mocks')
 mocks.install()
-dofile('../qblib/config.lua')
-dofile('../qblib/build/initiate.lua')
-dofile('../qblib/local/resources/client.lua')
-dofile('../qblib/modules/util/shared.lua')
+dofile('../kora_lib/config.lua')
+dofile('../kora_lib/build/initiate.lua')
+dofile('../kora_lib/local/resources/client.lua')
+dofile('../kora_lib/modules/util/shared.lua')
 
 local callbacks, messages = {}, {}
 function RegisterNUICallback(name, callback) callbacks[name] = callback end
@@ -14,7 +14,7 @@ function SetNuiFocus() end
 function SetNuiFocusKeepInput() end
 function IsNuiFocusKeepingInput() return false end
 QBTheme = { apply = function() end }
-dofile('../qblib/modules/nui/client.lua')
+dofile('../kora_lib/modules/nui/client.lua')
 dofile('config.lua')
 
 local checks = 0
@@ -39,7 +39,7 @@ dofile('shared/permissions.lua')
 Housing.copy = copy
 local actorAdmin = true
 QB.permissions = { hasPermission = function() return actorAdmin end }
-exports = { qbcore = { getPlayer = function() return { citizenid = 'owner', job = { name = 'unemployed' } } end } }
+exports = { kora_core = { getPlayer = function() return { citizenid = 'owner', job = { name = 'unemployed' } } end } }
 Housing.state = { ready = true, properties = { existing = property }, get = function(id) return Housing.state.properties[id] end }
 dofile('server/permissions.lua')
 dofile('server/properties.lua')
@@ -234,7 +234,7 @@ environment.RegisterNetEvent = function(name, handler) events[name] = handler en
 environment.AddEventHandler = environment.RegisterNetEvent
 environment.RegisterCommand = function(name, handler) commands[name] = handler end
 environment.CreateThread = function() end
-environment.GetCurrentResourceName = function() return 'qbhousing' end
+environment.GetCurrentResourceName = function() return 'kora_housing' end
 environment.vector3 = function(x, y, z) return { x = x, y = y, z = z } end
 assert(loadfile('client/main.lua', 't', environment))()
 local function worldProperty(id, state)
@@ -249,7 +249,7 @@ check(not next(zones), 'archival removes the physical interaction')
 events['qbhousing:client:synced']({ first = worldProperty('first') })
 events['onClientResourceStop']('another-resource')
 check(zones['qbhousing:first'], 'an unrelated resource stopping does not remove housing fixtures')
-events['onClientResourceStop']('qbhousing')
+events['onClientResourceStop']('kora_housing')
 check(not next(zones) and closes == 1, 'resource stop clears housing fixtures and closes its app')
 events['qbhousing:client:synced']({ first = worldProperty('first') })
 events['QBCore:Client:OnPlayerUnload']()
@@ -265,7 +265,7 @@ environment.DoesEntityExist = function(object) return object == 91 end
 environment.DeleteEntity = function() removed = removed + 1 end
 environment.SetEntityCoords = function() teleported = teleported + 1 end
 environment.QB.notify = { send = function() failed = failed + 1 end }
-environment.exports = { qbinterior = { createGeometry = function()
+environment.exports = { kora_interior = { createGeometry = function()
     events['QBCore:Client:OnPlayerUnload']()
     return { { 91 }, {} }
 end } }
@@ -273,7 +273,7 @@ local shellProperty = worldProperty('shell')
 shellProperty.interior.exit, shellProperty.interior.model = { x = 0, y = 0, z = 0 }, 'shell_v16low'
 events['qbhousing:client:enterShell'](shellProperty)
 check(removed == 1 and teleported == 0, 'a shell finishing after character unload is deleted without teleporting')
-environment.exports.qbinterior.createGeometry = function() return nil end
+environment.exports.kora_interior.createGeometry = function() return nil end
 events['qbhousing:client:enterShell'](shellProperty)
 check(failed == 1 and teleported == 0, 'an unavailable interior provider reports failure without teleporting')
 

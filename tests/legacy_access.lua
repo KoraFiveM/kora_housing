@@ -1,4 +1,4 @@
-local h = dofile('../qbcore/test/harness.lua')
+local h = dofile('../kora_core/test/harness.lua')
 local provided, handlers = {}, {}
 local record = {id='home',owner='OWNER',state='owned',keys={KEY=true},coowners={},permissionGrants={}}
 Housing = {state={ready=true,get=function(id) return id=='home' and record end},
@@ -7,9 +7,9 @@ local core = {
     getPlayerByCitizenId=function(_, cid) return cid=='OWNER' and {citizenid=cid,license='license:owner'} end,
     getOfflinePlayerData=function(_, cid) return cid=='OFFLINE' and {citizenid=cid,license='license:offline'} end,
 }
-exports=setmetatable({qbcore=core},{__call=function(_, name, fn) provided[name]=fn end})
+exports=setmetatable({kora_core=core},{__call=function(_, name, fn) provided[name]=fn end})
 function AddEventHandler(name, fn) handlers[name]=fn end
-QB={compat=dofile('../qblib/compat/provider.lua')()}
+QB={compat=dofile('../kora_lib/compat/provider.lua')()}
 Config={}
 dofile('server/permissions.lua');dofile('server/compat.lua')
 local legacy;handlers['__cfx_export_qb-houses_hasKey'](function(fn) legacy=fn end)

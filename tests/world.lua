@@ -1,5 +1,5 @@
 -- Real physical-space/furniture/security service; controlled identities, SQL and natives.
-local jsonTools = dofile('../qbcore/test/mocks.lua')
+local jsonTools = dofile('../kora_core/test/mocks.lua')
 json = { encode = jsonTools.stableEncode, decode = jsonTools.simpleDecode }
 dofile('config.lua')
 dofile('shared/schema.lua')
@@ -11,7 +11,7 @@ local timers, hooks = {}, {}
 function SetTimeout(_, handler) timers[#timers + 1] = handler end
 function AddEventHandler(name, handler) hooks[name] = handler end
 function TriggerClientEvent(name, target, ...) events[#events + 1] = { name = name, target = target, values = { ... } } end
-function GetCurrentResourceName() return 'qbhousing' end
+function GetCurrentResourceName() return 'kora_housing' end
 local positions = { [1] = { x = 5, y = 5, z = 2 }, [2] = { x = 5, y = 5, z = 2 }, [3] = { x = 5, y = 5, z = 2 } }
 function GetPlayerPed(src) return positions[src] and src or 0 end
 function GetEntityCoords(ped) return positions[ped] end
@@ -44,7 +44,7 @@ Housing.state.withWrite = function(id, handler)
     return table.unpack(result, 2, result.n)
 end
 local dispatched = 0
-exports = { qbdispatch = { createCall = function(_, payload) dispatched = dispatched + 1; return 55, 1 end } }
+exports = { kora_dispatch = { createCall = function(_, payload) dispatched = dispatched + 1; return 55, 1 end } }
 QB = { sql = {
     NULL = {},
     transactionChecked = function(statements, operation)

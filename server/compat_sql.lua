@@ -75,8 +75,8 @@ local function ownership(property)
     if legacy.source == 'qb-houses' and legacy.unmappedFixtures == nil then
         return nil, 'Legacy housing import requires fixture review: ' .. property.id
     end
-    local character = exports.qbcore:getPlayerByCitizenId(property.owner)
-        or exports.qbcore:getOfflinePlayerData(property.owner)
+    local character = exports.kora_core:getPlayerByCitizenId(property.owner)
+        or exports.kora_core:getOfflinePlayerData(property.owner)
     if not character or character.citizenid ~= property.owner or type(character.license) ~= 'string' then
         return nil, 'Legacy housing owner identity is unavailable: ' .. property.id
     end
@@ -174,7 +174,7 @@ end
 
 Housing.legacy.read = read
 exports('readLegacyHousing', function(operation, args, callback)
-    if GetInvokingResource() ~= 'qbsql' then return callback(nil, 'Legacy housing SQL is restricted to qbsql.') end
+    if GetInvokingResource() ~= 'kora_sql' then return callback(nil, 'Legacy housing SQL is restricted to qbsql.') end
     CreateThread(function()
         local deadline = GetGameTimer() + 60000
         while not State.ready or not Housing.world.ready do

@@ -1,10 +1,10 @@
-local h = dofile('../qbcore/test/harness.lua')
-local m = dofile('../qbcore/test/mocks.lua')
+local h = dofile('../kora_core/test/harness.lua')
+local m = dofile('../kora_core/test/mocks.lua')
 local function setup()
     local f, e = { writes = {}, allowed = true, timers = {}, events = {} }, {}
     for k, v in pairs(_G) do e[k] = v end
     e.json = { encode = m.stableEncode, decode = m.simpleDecode }
-    e.GetCurrentResourceName = function() return 'qbhousing' end
+    e.GetCurrentResourceName = function() return 'kora_housing' end
     e.AddEventHandler = function() end
     e.TriggerClientEvent = function(name) f.events[#f.events + 1] = name end
     e.QB = { timers = { clearTimeout = function() end, setTimeout = function(fn) f.timers[#f.timers+1] = fn; return #f.timers end }, sql = { NULL = '__NULL__' } }

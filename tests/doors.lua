@@ -1,5 +1,5 @@
-local H = dofile('../qbcore/test/harness.lua')
-local tools = dofile('../qbcore/test/mocks.lua')
+local H = dofile('../kora_core/test/harness.lua')
+local tools = dofile('../kora_core/test/mocks.lua')
 local function copy(value) return tools.simpleDecode(tools.stableEncode(value)) end
 
 local function setup()
@@ -8,21 +8,21 @@ local function setup()
         far = { id = 'far', coords = { x = 500, y = 0, z = 0 }, definition = {} },
     }, records = { home = { id = 'home', owner = 'OWNER', revision = 1, state = 'owned', interior = { entrance = { x = 0, y = 0, z = 0 } }, doorlocks = {} } } }
     local env = {}; for key, value in pairs(_G) do env[key] = value end
-    env.Config = {}; env.GetCurrentResourceName = function() return 'qbhousing' end
+    env.Config = {}; env.GetCurrentResourceName = function() return 'kora_housing' end
     env.AddEventHandler = function() end
     local api = {}
     function api.getAllDoors() local rows = {}; for _, door in pairs(f.doors) do rows[#rows + 1] = copy(door) end; return rows end
     function api.getDoor(_, id) return f.doors[id] and copy(f.doors[id]) or false end
     function api.RegisterDoorPolicy(_, id, callback)
         if f.failBind then return false, 'controlled binding failure' end
-        f.doors[id].definition.policyOwner, f.bound[id] = 'qbhousing', callback
+        f.doors[id].definition.policyOwner, f.bound[id] = 'kora_housing', callback
         return true
     end
     function api.ReleaseDoorPolicy(_, id)
         f.doors[id].definition.policyOwner, f.bound[id], f.released[id] = nil, nil, true
         return true
     end
-    env.exports = { qbdoorlock = api }
+    env.exports = { kora_doorlock = api }
     env.Housing = { copy = copy, finite = function(v) return type(v) == 'number' and v == v and math.abs(v) ~= math.huge end,
         state = { ready = true, properties = f.records },
         permissions = { citizenId = function() return f.cid or 'OWNER' end, isAdmin = function() return f.admin end,
@@ -93,7 +93,7 @@ H.test('explicit unlink releases protection and orphan reconciliation survives a
     assert(f.service.configure(1, 'home', { 'front' }, 1))
     assert(f.service.configure(1, 'home', {}, 2))
     H.assertEqual(f.released.front, true)
-    f.doors.front.definition.policyOwner = 'qbhousing'; f.released.front = nil
+    f.doors.front.definition.policyOwner = 'kora_housing'; f.released.front = nil
     assert(f.service.load())
     H.assertEqual(f.released.front, true)
 end)
@@ -102,7 +102,7 @@ H.test('unknown save outcomes retain acquired protection until authoritative rec
     local f = setup(); f.failSave, f.uncertain = true, true
     H.assertEqual(f.service.configure(1, 'home', { 'front' }, 1), false)
     H.assertEqual(f.released.front, nil)
-    H.assertEqual(f.doors.front.definition.policyOwner, 'qbhousing')
+    H.assertEqual(f.doors.front.definition.policyOwner, 'kora_housing')
     f.allowed = true
     H.assertEqual(f.bound.front(1, 'front', { lockpick = true, authorised = true, door = { lockpick = true } }), false)
     f.records.home.doorlocks, f.uncertain = { 'front' }, false

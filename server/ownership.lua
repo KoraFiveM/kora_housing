@@ -8,13 +8,13 @@ local function targetExists(citizenid)
     if type(citizenid) ~= 'string' or citizenid == '' or #citizenid > 50 then
         return false, 'Use a valid character ID.'
     end
-    local ok, data = pcall(function() return exports.qbcore:getPlayerByCitizenId(citizenid) end)
+    local ok, data = pcall(function() return exports.kora_core:getPlayerByCitizenId(citizenid) end)
     if not ok then return false, 'Character lookup is unavailable. Try again.' end
     if data then
         if type(data) ~= 'table' or data.citizenid ~= citizenid then return false, 'Character could not be verified.' end
         return true
     end
-    local loaded, offline, err = pcall(function() return exports.qbcore:getOfflinePlayerData(citizenid) end)
+    local loaded, offline, err = pcall(function() return exports.kora_core:getOfflinePlayerData(citizenid) end)
     if not loaded or err then return false, 'Character lookup is unavailable. Try again.' end
     if type(offline) ~= 'table' or offline.citizenid ~= citizenid then return false, 'Character not found.' end
     return true

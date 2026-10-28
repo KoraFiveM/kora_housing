@@ -5,7 +5,7 @@ local State = Housing.state
 
 local function player(src)
     if type(src) ~= 'number' or src < 1 or src % 1 ~= 0 then return nil end
-    local ok, data = pcall(function() return exports.qbcore:getPlayer(src) end)
+    local ok, data = pcall(function() return exports.kora_core:getPlayer(src) end)
     if not ok or type(data) ~= 'table' or type(data.citizenid) ~= 'string' or data.citizenid == '' then return nil end
     return data
 end

@@ -1,5 +1,5 @@
 -- Real lease service with checked, rollback-capable SQL and controlled deadlines.
-local helpers = dofile('../qbcore/test/mocks.lua')
+local helpers = dofile('../kora_core/test/mocks.lua')
 json = { encode = helpers.stableEncode, decode = helpers.simpleDecode }
 dofile('config.lua'); dofile('shared/schema.lua')
 local function copy(value) return Housing.copy(value) end
@@ -9,9 +9,9 @@ os = { time = function() return now end, date = realOs.date }
 local db = { leases = {}, deposit_deductions = {}, rent_periods = {}, evictions = {}, lease_access = {}, stashes = {}, furniture = {} }
 local timers, sqlWrites, payments, locked, failure, onLock = {}, 0, {}, false, nil, nil
 local identities = { [1] = 'OWNER', [2] = 'TENANT', [3] = 'COOWNER', [4] = 'ADMIN' }
-function GetCurrentResourceName() return 'qbhousing' end
+function GetCurrentResourceName() return 'kora_housing' end
 function AddEventHandler() end
-exports = { qbcore = { getPlayerByCitizenId = function(_, cid) return { citizenid = cid } end } }
+exports = { kora_core = { getPlayerByCitizenId = function(_, cid) return { citizenid = cid } end } }
 Housing.permissions = { citizenId = function(src) return identities[src] end, isAdmin = function(src) return src == 4 end }
 Housing.grantablePermissions = { entry = true, ['stash.open'] = true, ['access.share'] = true }
 local property = { id = 'home', owner = 'OWNER', coowners = { COOWNER = true }, revision = 1, ownershipRevision = 1, propertyType = 'house', state = 'owned' }

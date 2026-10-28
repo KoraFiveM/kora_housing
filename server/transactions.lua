@@ -29,9 +29,9 @@ end
 
 local function execute(row)
     local request = type(row.request) == 'string' and json.decode(row.request) or row.request
-    local called, receipt, code, message = pcall(function() return exports.qbbanking:ExecuteTransaction(row.id, request) end)
+    local called, receipt, code, message = pcall(function() return exports.kora_banking:ExecuteTransaction(row.id, request) end)
     if not called or not receipt then
-        local found, existing = pcall(function() return exports.qbbanking:GetOperation(row.id) end)
+        local found, existing = pcall(function() return exports.kora_banking:GetOperation(row.id) end)
         if found and existing and existing.status == 'completed' then receipt = existing end
     end
     if receipt and receipt.status == 'completed' then return true, publish(row) end

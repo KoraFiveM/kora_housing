@@ -60,7 +60,7 @@ for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLes
     function DoesEntityExist(object) return object == 91 end
     function DeleteEntity(object) removed[#removed + 1] = object end
     exports = {
-        qbinterior = {
+        kora_interior = {
             createGeometry = function(_, origin, exit, model, placement)
                 check(placement == 'legacy', 'fallback shell retains stock native placement without early teleport')
                 check(origin.x == 800 and origin.y == -1500 and origin.z == (name == 'CreateFurniMotelStandard' and 70 or 100), 'retain shell origin')

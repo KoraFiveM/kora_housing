@@ -6,8 +6,8 @@ local function hasKey(identifier, citizenid, house)
     -- Upstream checks both license and character for owners. Existing granted
     -- keys are character-specific; native leases/revocations remain authoritative.
     if property.owner == citizenid then
-        local player = exports.qbcore:getPlayerByCitizenId(citizenid)
-            or exports.qbcore:getOfflinePlayerData(citizenid)
+        local player = exports.kora_core:getPlayerByCitizenId(citizenid)
+            or exports.kora_core:getOfflinePlayerData(citizenid)
         if not player or player.license ~= identifier then return false end
     end
     return Housing.permissions.canCitizen(citizenid, house, 'entry') == true

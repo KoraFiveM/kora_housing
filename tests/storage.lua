@@ -1,4 +1,4 @@
-local H = dofile('../qbcore/test/harness.lua')
+local H = dofile('../kora_core/test/harness.lua')
 local setup = dofile('tests/domain_fixture.lua')
 local function stash(f, id, status)
     f.db.stashes[id] = { id = id, property_id = 'home', status = status or 'active', coords = { x = 0, y = 0, z = 0 } }

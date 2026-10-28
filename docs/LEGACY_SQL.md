@@ -1,6 +1,6 @@
 # Stock housing SQL compatibility
 
-The selected native stack uses `qbhousing` as the owner of property data. The
+The selected native stack uses `kora_housing` as the owner of property data. The
 original `houselocations` and `player_houses` tables are an import archive. They
 are retained unchanged, together with the lossless `qbhousing_stock_import`
 backup. Running stock `qb-houses` beside this provider is unsupported.
@@ -11,7 +11,7 @@ The reviewed source is `qbcore-fivem/qb-houses` at
 
 ## Live read bridge
 
-`qbsql` routes these exact ad-hoc reads to native housing:
+`kora_sql` routes these exact ad-hoc reads to native housing:
 
 - `SELECT * FROM houselocations`
 - `SELECT * FROM houselocations WHERE name = ?`
@@ -22,14 +22,14 @@ The reviewed source is `qbcore-fivem/qb-houses` at
 - `SELECT * FROM player_houses WHERE citizenid = ?`
 - `SELECT * FROM player_houses WHERE identifier = ? AND citizenid = ?`
 
-Whitespace, paired identifier backticks, and named binds accepted by qbsql are
+Whitespace, paired identifier backticks, and named binds accepted by kora_sql are
 supported. The native export `readLegacyHousing(operation, args, callback)` is
-restricted to the actual `qbsql` caller. The callback receives `(rows, error)`.
+restricted to the actual `kora_sql` caller. The callback receives `(rows, error)`.
 The bridge feeds the ordinary query/single/scalar/prepare result adapters.
 It waits for native readiness and reports failures; it never substitutes old
 archive rows after a provider error or stop.
 
-Only calls whose original resource is `qbhousing` bypass projection. This lets
+Only calls whose original resource is `kora_housing` bypass projection. This lets
 its importer read the source before native state is ready, without recursion.
 Other ad-hoc writes and unsupported reads referring to these tables fail
 explicitly while native housing is selected. Transaction/batch SQL is not
@@ -72,7 +72,7 @@ Nonempty representable fixture records become real native records in the same
 checked transaction as the new property and permanent import marker:
 
 - Stash IDs stay equal to the original house name, preserving the authoritative
-  qbinventory contents without copying or replacing items. The pinned source
+  kora_inventory contents without copying or replacing items. The pinned source
   config supplies tier 1 capacity only: 50 slots and 1,000,000 weight. Other
   tiers require their actual configured capacity in
   `Config.legacyHousing.stashTiers`; unknown capacity remains unmapped. Policy
@@ -108,7 +108,7 @@ Mapped wardrobe/logout/stash/furniture fields project from current native data.
 ## Remaining physical boundary
 
 Exact model-local bounds for every bundled shell are decoded and verified in
-[qbinterior's asset report](../../qbinterior/docs/SHELL_GEOMETRY.md). These are not
+[qbinterior's asset report](../../kora_interior/docs/SHELL_GEOMETRY.md). These are not
 verified stock world bounds: stock `CreateObject` placement differs from the
 centered native, and the available metadata does not unambiguously establish
 all resulting world Z limits. `legacy.needsWorldMapping` stays set. Configure
