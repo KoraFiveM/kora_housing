@@ -84,8 +84,8 @@ local function route(channel, action, context)
     check(result and result.ok == true, result and result.error or 'AppShell route did not respond')
     return result.result or {}
 end
-local function act(action, context) return route('qblib:app:action', action, context or {}) end
-local function change(action, context) return route('qblib:app:change', action, context) end
+local function act(action, context) return route('kora_lib:app:action', action, context or {}) end
+local function change(action, context) return route('kora_lib:app:change', action, context) end
 local function form(app, viewId, tabId)
     for _, view in ipairs(app.navigation) do
         if view.id == viewId then
@@ -199,7 +199,7 @@ act('property:create', { viewId = 'new', value = { id = 'land', label = 'Land', 
     garageCoords = { x = 2, y = 2, z = 6, w = 0 }, garageSpawn = { x = 3, y = 3, z = 6, w = 0 }, garageSlots = 2 } })
 local payload = calls['qbhousing:createProperty'][1]
 check(payload.interior == nil and payload.garage.slots == 2 and payload.owner == nil, 'land payload supports a garage without an interior or ownership assignment')
-check(payload.exterior.minZ == 5 and payload.exterior.maxZ == 9, 'boundary height matches qblib lowest-point plus thickness semantics')
+check(payload.exterior.minZ == 5 and payload.exterior.maxZ == 9, 'boundary height matches kora_lib lowest-point plus thickness semantics')
 check(payload.id == 'land' and payload.label == 'Land', 'new draft retains typed fields across world capture')
 
 local imported = copy(Housing.state.properties.existing)

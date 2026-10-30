@@ -32,7 +32,7 @@ Run `python3 tests/migrations.py` for the separate hermetic database check. Exec
 - qbsql: Lua bridge smoke tests and 77 JavaScript tests passed; checked transaction rollback/expected-row and prior-worker joining cases ran. Driver bundle rebuilt.
 - qbbanking: existing client/contracts/server regressions and durable finance suite passed. Commit/rollback, gross funds, escrow, changed-request refusal, lost response and restart receipt/publication behavior are covered.
 - qbgarages: property integration 8 cases and legacy-housing compatibility passed. qbdoorlock: 7 policy cases passed, preserving ordinary hook semantics.
-- qbinterior: geometry creation/cleanup 7 checks passed. qblib: placement 21 cases passed, including numeric/bounded/raycast placement and owner-scoped cancellation. AppShell is exercised by the composed housing app tests.
+- qbinterior: geometry creation/cleanup 7 checks passed. kora_lib: placement 21 cases passed, including numeric/bounded/raycast placement and owner-scoped cancellation. AppShell is exercised by the composed housing app tests.
 
 The finance implementation was also exercised with its actual SQL against a separate disposable MariaDB during development: balanced settlement, stale domain-row rollback, insufficient balance, durable receipt uniqueness, unchanged-row behavior and persisted core fencing. The repeatable housing database runner covers the domain side without requiring a configured live DSN.
 

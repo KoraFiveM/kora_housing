@@ -105,7 +105,7 @@ check(frozen and not next(cams) and not next(controlLeases), 'revocation restore
 frozen = false
 pauseSubscribe = false
 zones[1].onEnter()
-QB.entities.remove = function() error('qblib already stopped') end
+QB.entities.remove = function() error('kora_lib already stopped') end
 exports.kora_interior.removeGeometry = function() error('qbinterior already stopped') end
 Housing.scene.clear()
 check(not next(entities) and not next(geometries) and zones[1].removed, 'character/resource cleanup removes the scene and its spatial registration')

@@ -1,6 +1,6 @@
 # kora_housing
 
-Housing for kora_core and qblib: a type-aware in-game creator, unlimited ownership and co-ownership, public/private/off-market sales, rolling rentals, protected recovery, inventory upgrades, shared physical interiors, garages, furniture, security cameras, alarms and administrative archival.
+Housing for kora_core and kora_lib: a type-aware in-game creator, unlimited ownership and co-ownership, public/private/off-market sales, rolling rentals, protected recovery, inventory upgrades, shared physical interiors, garages, furniture, security cameras, alarms and administrative archival.
 
 Everything uses the existing AppShell and installed framework resources. There is no separate frontend, replacement inventory or property routing bucket. Financial settlement uses confirmed banking operations with a persistent journal and ledger; title and all payment legs commit together.
 
