@@ -99,10 +99,10 @@ end
 
 local function checked(statements, src, id, action, context)
     statements[#statements + 1] = { query = 'INSERT INTO `qbhousing_audit` (`property_id`,`actor`,`action`,`outcome`,`context`) VALUES (?,?,?,?,?)',
-        values = { id, src and Permissions.citizenId(src) or QB.sql.NULL, action, 'success', json.encode(context or {}) }, expectedRows = 1 }
+        values = { id, src and Permissions.citizenId(src) or Kora.sql.NULL, action, 'success', json.encode(context or {}) }, expectedRows = 1 }
     local operation = 'qbhousing:world:' .. id .. ':' .. token()
     local cid = src and Permissions.citizenId(src)
-    local result, err = QB.sql.transactionChecked(statements, { key = operation, fingerprint = operation, citizenids = cid and { cid } or {} })
+    local result, err = Kora.sql.transactionChecked(statements, { key = operation, fingerprint = operation, citizenids = cid and { cid } or {} })
     if not result or not result.success then
         if (not result or result.code == 'indeterminate') and State.markUncertain then
             State.markUncertain(id, operation)
@@ -246,9 +246,9 @@ end
 
 local function furnitureWrite(item, previousRevision)
     if previousRevision then return { query = 'UPDATE `qbhousing_furniture` SET `property_id`=?,`owner_cid`=?,`lease_id`=?,`status`=?,`definition`=?,`revision`=? WHERE `id`=? AND `revision`=?',
-        values = { item.propertyId, item.ownerCid, item.leaseId or QB.sql.NULL, item.status, json.encode(item), item.revision, item.id, previousRevision }, expectedRows = 1 } end
+        values = { item.propertyId, item.ownerCid, item.leaseId or Kora.sql.NULL, item.status, json.encode(item), item.revision, item.id, previousRevision }, expectedRows = 1 } end
     return { query = 'INSERT INTO `qbhousing_furniture` (`id`,`property_id`,`owner_cid`,`lease_id`,`status`,`definition`,`revision`) VALUES (?,?,?,?,?,?,?)',
-        values = { item.id, item.propertyId, item.ownerCid, item.leaseId or QB.sql.NULL, item.status, json.encode(item), item.revision }, expectedRows = 1 }
+        values = { item.id, item.propertyId, item.ownerCid, item.leaseId or Kora.sql.NULL, item.status, json.encode(item), item.revision }, expectedRows = 1 }
 end
 
 function World.ownershipStatements(id, buyerCid)
@@ -477,7 +477,7 @@ function World.grantCamera(src, id, cid, expiresAt)
         local owner = Permissions.citizenId(src)
         if property.owner ~= owner and not (property.coowners and property.coowners[owner]) then return false, 'Only property owners can authorize camera viewing.' end
         if type(cid) ~= 'string' or #cid < 1 or #cid > 50 then return false, 'A valid citizen ID is required.' end
-        local target = QB.sql.single('SELECT `citizenid` FROM `players` WHERE `citizenid`=? AND `deleted_at` IS NULL', { cid })
+        local target = Kora.sql.single('SELECT `citizenid` FROM `players` WHERE `citizenid`=? AND `deleted_at` IS NULL', { cid })
         if not target then return false, 'Character was not found.' end
         expiresAt = expiresAt or os.time() + Config.cameraGrantSeconds
         if not Housing.finite(expiresAt) or expiresAt % 1 ~= 0 or expiresAt <= os.time() or expiresAt > os.time() + Config.cameraGrantSeconds then return false, 'Camera authorization must expire within the configured maximum duration.' end
@@ -649,7 +649,7 @@ end
 function World.reconcileProperty(id)
     local names, statements = { 'spaces', 'furniture', 'cameras', 'alarms', 'camera_grants' }, {}
     for _, name in ipairs(names) do statements[#statements + 1] = { query = 'SELECT * FROM `qbhousing_' .. name .. '` WHERE `property_id`=?', values = { id } } end
-    local result, err = QB.sql.transactionChecked(statements)
+    local result, err = Kora.sql.transactionChecked(statements)
     if not result or not result.success or type(result.results) ~= 'table' then return false, err or result and result.message or 'Physical property recovery is unavailable.' end
     local loaded = { spaces = {}, furniture = {}, cameras = {}, alarms = {}, grants = {} }
     for index, name in ipairs(names) do
@@ -687,7 +687,7 @@ end
 function World.load()
     local loaded = { spaces = {}, furniture = {}, cameras = {}, alarms = {}, grants = {} }
     for _, name in ipairs({ 'spaces', 'furniture', 'cameras', 'alarms' }) do
-        local rows, err = QB.sql.query('SELECT * FROM `qbhousing_' .. name .. '`')
+        local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_' .. name .. '`')
         if not rows then return false, err end
         for _, row in ipairs(rows) do
             local ok, value = pcall(json.decode, row.definition)
@@ -699,7 +699,7 @@ function World.load()
             loaded[name][row.id or row.property_id] = value
         end
     end
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_camera_grants`')
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_camera_grants`')
     if not rows then return false, err end
     for _, row in ipairs(rows) do
         loaded.grants[row.property_id] = loaded.grants[row.property_id] or {}

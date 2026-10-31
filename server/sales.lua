@@ -2,11 +2,11 @@ Housing.sales = {}
 local S, D, State, P = Housing.sales, Housing.domain, Housing.state, Housing.permissions
 
 local function getListing(id)
-    return QB.sql.single('SELECT * FROM `qbhousing_listings` WHERE `id`=?', { id })
+    return Kora.sql.single('SELECT * FROM `qbhousing_listings` WHERE `id`=?', { id })
 end
 
 local function getOffer(id)
-    local offer, err = QB.sql.single('SELECT * FROM `qbhousing_offers` WHERE `id`=?', { id })
+    local offer, err = Kora.sql.single('SELECT * FROM `qbhousing_offers` WHERE `id`=?', { id })
     if not offer then return nil, err or 'Offer was not found.' end
     local listing, listingErr = getListing(offer.listing_id)
     if not listing then return nil, listingErr or 'Listing was not found.' end
@@ -20,7 +20,7 @@ end
 
 local function available(property)
     if not property or (property.state == 'archived' or property.state == 'archiving') then return false, 'Property is unavailable.' end
-    local blocked, err = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN (?,?,?,?) OR `deposit_remaining`>0)', { property.id, 'proposed', 'active', 'ending', 'evicting' })
+    local blocked, err = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN (?,?,?,?) OR `deposit_remaining`>0)', { property.id, 'proposed', 'active', 'ending', 'evicting' })
     if blocked == nil or tonumber(blocked) > 0 then return false, err or 'Resolve existing leases and deposits before listing this property.' end
     return true
 end
@@ -68,7 +68,7 @@ function S.createListing(src, id, payload, revision)
             biography = payload.biography, price = payload.price, commission_policy = Housing.copy(policy), policy_version = Config.salePolicyVersion, status = 'active', ownership_revision = property.ownershipRevision, created_at = os.time() }
         local writes = {
             { query = [[INSERT INTO `qbhousing_listings` (`id`,`property_id`,`channel`,`seller`,`agent`,`buyer`,`biography`,`price`,`status`,`ownership_revision`,`created_at`,`commission_policy`,`policy_version`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)]],
-                values = { listing.id, id, channel, listing.seller or QB.sql.NULL, listing.agent or QB.sql.NULL, listing.buyer or QB.sql.NULL, listing.biography, listing.price, 'active', listing.ownership_revision, listing.created_at, json.encode(policy), Config.salePolicyVersion } },
+                values = { listing.id, id, channel, listing.seller or Kora.sql.NULL, listing.agent or Kora.sql.NULL, listing.buyer or Kora.sql.NULL, listing.biography, listing.price, 'active', listing.ownership_revision, listing.created_at, json.encode(policy), Config.salePolicyVersion } },
         }
         if listing.buyer then
             local offerId = D.id()
@@ -154,7 +154,7 @@ function S.completeSale(src, offerId)
         local property = State.get(listing.property_id)
         if not offer or offer.status ~= 'accepted' or listing.status ~= 'active' or not available(property) then return false, 'The sale is not ready.' end
         if D.owner(property, cid) or property.ownershipRevision ~= listing.ownership_revision then return false, 'Ownership changed; this approval is stale.' end
-        local approvals, err = QB.sql.query('SELECT * FROM `qbhousing_sale_approvals` WHERE `offer_id`=?', { offerId })
+        local approvals, err = Kora.sql.query('SELECT * FROM `qbhousing_sale_approvals` WHERE `offer_id`=?', { offerId })
         if not approvals then return false, err end
         local approved = {}
         for _, row in ipairs(approvals) do if tonumber(row.approved) == 1 and row.ownership_revision == property.ownershipRevision then approved[row.citizenid] = true end end
@@ -208,7 +208,7 @@ function S.cancelListing(src, id)
 end
 
 function S.catalog()
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_listings` WHERE `status`=? AND `channel`=? ORDER BY `created_at` DESC LIMIT 200', { 'active', 'public' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_listings` WHERE `status`=? AND `channel`=? ORDER BY `created_at` DESC LIMIT 200', { 'active', 'public' })
     if not rows then return nil, err end
     local result = {}
     for _, listing in ipairs(rows) do
@@ -225,7 +225,7 @@ end
 function S.view(src, id)
     local cid, property = P.citizenId(src), State.get(id)
     local management = D.owner(property, cid) or P.isAdmin(src) or P.isRealtor(src) and (not property.owner or D.agent(id, cid))
-    local listings = QB.sql.query('SELECT * FROM `qbhousing_listings` WHERE `property_id`=? ORDER BY `created_at` DESC LIMIT 100', { id }) or {}
+    local listings = Kora.sql.query('SELECT * FROM `qbhousing_listings` WHERE `property_id`=? ORDER BY `created_at` DESC LIMIT 100', { id }) or {}
     local result = { agents = management and Housing.copy(D.agents[id] or {}) or {}, listings = {}, offers = {} }
     for _, listing in ipairs(listings) do
         if management or listing.channel == 'public' or listing.buyer == cid then
@@ -233,11 +233,11 @@ function S.view(src, id)
             local query = 'SELECT * FROM `qbhousing_offers` WHERE `listing_id`=?'
             local params = { listing.id }
             if not management then query = query .. ' AND `buyer`=?'; params[#params + 1] = cid end
-            local offers = QB.sql.query(query .. ' ORDER BY `created_at` DESC LIMIT 100', params) or {}
+            local offers = Kora.sql.query(query .. ' ORDER BY `created_at` DESC LIMIT 100', params) or {}
             for _, offer in ipairs(offers) do
-                offer.approvals = QB.sql.query('SELECT `citizenid`,`approved`,`ownership_revision` FROM `qbhousing_sale_approvals` WHERE `offer_id`=?', { offer.id }) or {}
+                offer.approvals = Kora.sql.query('SELECT `citizenid`,`approved`,`ownership_revision` FROM `qbhousing_sale_approvals` WHERE `offer_id`=?', { offer.id }) or {}
                 offer.property_id, offer.agent, offer.channel = id, listing.agent, listing.channel
-                offer.history = QB.sql.query('SELECT `actor`,`action`,`note`,`created_at` FROM `qbhousing_offer_history` WHERE `offer_id`=? ORDER BY `id`', { offer.id }) or {}
+                offer.history = Kora.sql.query('SELECT `actor`,`action`,`note`,`created_at` FROM `qbhousing_offer_history` WHERE `offer_id`=? ORDER BY `id`', { offer.id }) or {}
                 offer.settlementSummary = S.summary(property, listing, offer.amount)
                 result.offers[#result.offers + 1] = offer
             end
@@ -258,7 +258,7 @@ end
 function S.importLegacy()
     for id, property in pairs(State.properties) do
         if property.state == 'listed' and property.listing and D.amount(property.listing.price) then
-            local existing, err = QB.sql.single('SELECT `id` FROM `qbhousing_listings` WHERE `property_id`=? LIMIT 1', { id })
+            local existing, err = Kora.sql.single('SELECT `id` FROM `qbhousing_listings` WHERE `property_id`=? LIMIT 1', { id })
             if err then return false, err end
             if not existing then
                 local listingId = D.id()
@@ -268,7 +268,7 @@ function S.importLegacy()
                 local agent = property.listing.realtor
                 local status = agent and (not direct or buyer) and 'active' or 'legacy'
                 local writes = { { query = 'INSERT INTO `qbhousing_listings` (`id`,`property_id`,`channel`,`seller`,`agent`,`buyer`,`biography`,`price`,`status`,`ownership_revision`,`created_at`,`commission_policy`,`policy_version`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                    values = { listingId, id, direct and 'off_market' or 'public', property.owner or QB.sql.NULL, agent or QB.sql.NULL, buyer or QB.sql.NULL, property.label, property.listing.price, status, property.ownershipRevision, os.time(), json.encode(Config.saleCommissions[direct and 'off_market' or 'public']), Config.salePolicyVersion } }, D.audit(id, nil, 'listing.import', { status = status }) }
+                    values = { listingId, id, direct and 'off_market' or 'public', property.owner or Kora.sql.NULL, agent or Kora.sql.NULL, buyer or Kora.sql.NULL, property.label, property.listing.price, status, property.ownershipRevision, os.time(), json.encode(Config.saleCommissions[direct and 'off_market' or 'public']), Config.salePolicyVersion } }, D.audit(id, nil, 'listing.import', { status = status }) }
                 if agent and property.owner then writes[#writes + 1] = { query = 'INSERT IGNORE INTO `qbhousing_agents` (`property_id`,`citizenid`) VALUES (?,?)', values = { id, agent } } end
                 if buyer and status == 'active' then
                     local offerId = D.id()

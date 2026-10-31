@@ -8,7 +8,7 @@ local function fixture()
     f.current='OWNER'; f.position={x=1,y=2,z=3};f.events={};f.opens={};f.states={}
     f.env.exports.kora_core.getPlayer=function() return {citizenid=f.current} end
     f.env.exports.kora_core.logout=function(_,src,options) f.logout={src,options};return not f.failLogout, f.failLogout and 'durability failure' or nil end
-    f.env.QB.permissions={hasPermission=function() return false end}
+    f.env.Kora.permissions={hasPermission=function() return false end}
     f.housing.transactions={busy=function() return f.busy or false end}
     f.env.GetPlayerPed=function() return 1 end
     f.env.GetEntityCoords=function() return f.position end

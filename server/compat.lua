@@ -14,4 +14,4 @@ local function hasKey(identifier, citizenid, house)
 end
 
 exports('hasKey', hasKey)
-QB.compat.provideExport('qb-houses', 'hasKey', hasKey)
+Kora.compat.provideExport('qb-houses', 'hasKey', hasKey)

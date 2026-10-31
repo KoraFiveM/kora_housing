@@ -23,7 +23,7 @@ Housing={fixtures={enter=function() end,clear=function() end}}
 for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLesterShell', 'CreateGarageMed', 'CreateFurniMotelStandard' }) do
     local events, threads, position, prompt, removed = {}, {}, nil, nil, {}
     local pressed, shows, hides, created, heading = false, 0, 0, 0, nil
-    QB = {
+    Kora = {
         textui = {
             show = function(message, options)
                 check(message == 'Leave property' and options.key == 'E', 'existing leave UI contract')

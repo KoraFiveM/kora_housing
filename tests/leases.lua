@@ -25,9 +25,9 @@ function Housing.state.withWrite(_, fn)
     if not result[1] then error(result[2]) end
     return table.unpack(result, 2, result.n)
 end
-QB = { sql = { NULL = '__NULL__' }, timers = {} }
-function QB.timers.setTimeout(fn, delay) serial = serial + 1; timers[serial] = { fn = fn, delay = delay }; return serial end
-function QB.timers.clearTimeout(id) timers[id] = nil end
+Kora = { sql = { NULL = '__NULL__' }, timers = {} }
+function Kora.timers.setTimeout(fn, delay) serial = serial + 1; timers[serial] = { fn = fn, delay = delay }; return serial end
+function Kora.timers.clearTimeout(id) timers[id] = nil end
 local function check(value, message) assert(value, message); checks = checks + 1 end
 local function tableName(sql) return sql:match('`qbhousing_([%w_]+)`') end
 local function rowsFor(sql, p)
@@ -43,8 +43,8 @@ local function rowsFor(sql, p)
     end
     return result
 end
-function QB.sql.query(sql, p) return rowsFor(sql, p or {}) end
-function QB.sql.single(sql, p)
+function Kora.sql.query(sql, p) return rowsFor(sql, p or {}) end
+function Kora.sql.single(sql, p)
     local name = tableName(sql)
     if name == 'listings' then return nil end
     if name == 'leases' and sql:find('`property_id`=?', 1, true) then
@@ -55,7 +55,7 @@ function QB.sql.single(sql, p)
     end
     return copy(db[name] and db[name][p[1]])
 end
-function QB.sql.scalar(sql, p)
+function Kora.sql.scalar(sql, p)
     if sql == 'SELECT UUID()' then serial = serial + 1; return 'id:' .. serial end
     local sum = 0
     for _, row in pairs(db.deposit_deductions) do
@@ -70,7 +70,7 @@ local function apply(staged, statement)
     if sql:find('INSERT', 1, true) == 1 then
         local cols = sql:match('`qbhousing_[%w_]+`%s*%((.-)%)')
         local row, index = {}, 0
-        for column in cols:gmatch('`([^`]+)`') do index = index + 1; if p[index] ~= QB.sql.NULL then row[column] = copy(p[index]) end end
+        for column in cols:gmatch('`([^`]+)`') do index = index + 1; if p[index] ~= Kora.sql.NULL then row[column] = copy(p[index]) end end
         local key = row.id or name == 'rent_periods' and row.lease_id .. ':' .. row.period_start or row.lease_id
         if staged[name][key] then return sql:find('IGNORE', 1, true) and 0 or 0 end
         row.revision, row.missed, row.deposit_remaining = row.revision or 1, row.missed or 0, row.deposit_remaining or 0
@@ -90,7 +90,7 @@ local function apply(staged, statement)
             local match = true
             for column, value in pairs(predicates) do if row[column] ~= value then match = false end end
             if match then
-                for column, value in pairs(changes) do row[column] = value ~= QB.sql.NULL and value or nil end
+                for column, value in pairs(changes) do row[column] = value ~= Kora.sql.NULL and value or nil end
                 affected = affected + 1
             end
         end
@@ -98,7 +98,7 @@ local function apply(staged, statement)
     end
     error('Unhandled lease SQL: ' .. sql)
 end
-function QB.sql.transactionChecked(statements)
+function Kora.sql.transactionChecked(statements)
     if failure == 'sql' then return { success = false, code = 'unavailable' } end
     local staged = copy(db)
     for _, statement in ipairs(statements) do
@@ -109,7 +109,7 @@ function QB.sql.transactionChecked(statements)
     return { success = true }
 end
 function Housing.state.persist(value, _, writes)
-    local result = QB.sql.transactionChecked(writes)
+    local result = Kora.sql.transactionChecked(writes)
     if not result.success then return nil, result.code end
     value.revision = value.revision + 1
     Housing.state.properties[value.id] = value; property = value
@@ -124,7 +124,7 @@ Housing.world = { recoverLease = function() return true end }
 Housing.transactions = { nextKey = function(base) serial = serial + 1; return base .. ':' .. serial end }
 function Housing.transactions.run(key, kind, actor, value, debits, credits, writes, effects)
     if failure == 'insufficient_funds' or failure == 'unavailable' or failure == 'pending' then return false, failure, failure end
-    local outcome = QB.sql.transactionChecked(writes)
+    local outcome = Kora.sql.transactionChecked(writes)
     if not outcome.success then return false, outcome.code, outcome.code end
     payments[#payments + 1] = { key = key, kind = kind, debits = copy(debits), credits = copy(credits) }
     Housing.leases.publish(effects.lease)

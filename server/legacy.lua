@@ -16,11 +16,11 @@ local function identity(value, length)
 end
 
 function Housing.legacy.importStock()
-    if QB.sql.awaitCheckedOperations then
-        local settled, err = QB.sql.awaitCheckedOperations('qbhousing:')
+    if Kora.sql.awaitCheckedOperations then
+        local settled, err = Kora.sql.awaitCheckedOperations('qbhousing:')
         if not settled then return false, err end
     end
-    local tables, err = QB.sql.query([[SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES
+    local tables, err = Kora.sql.query([[SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('houselocations','player_houses')]])
     if not tables then return false, err end
     local present = {}
@@ -28,10 +28,10 @@ function Housing.legacy.importStock()
     if not next(present) then return true end
     if not present.houselocations or not present.player_houses then return false, 'Stock housing requires both houselocations and player_houses tables.' end
 
-    local markers, markerError = QB.sql.query('SELECT `property_id` FROM `qbhousing_stock_import`')
-    local native, nativeError = QB.sql.query('SELECT `id` FROM `qbhousing_properties`')
-    local locations, locationError = QB.sql.query('SELECT * FROM `houselocations`')
-    local ownership, ownershipError = QB.sql.query('SELECT * FROM `player_houses`')
+    local markers, markerError = Kora.sql.query('SELECT `property_id` FROM `qbhousing_stock_import`')
+    local native, nativeError = Kora.sql.query('SELECT `id` FROM `qbhousing_properties`')
+    local locations, locationError = Kora.sql.query('SELECT * FROM `houselocations`')
+    local ownership, ownershipError = Kora.sql.query('SELECT * FROM `player_houses`')
     if not markers or not native or not locations or not ownership then return false, markerError or nativeError or locationError or ownershipError end
     local imported, existing, byId, owners = {}, {}, {}, {}
     for _, row in ipairs(markers) do imported[row.property_id] = true end
@@ -64,7 +64,7 @@ function Housing.legacy.importStock()
         local keys = {}
         if owner then
             if not identity(owner.citizenid, 50) or not identity(owner.identifier, 50) then return false, 'Invalid stock owner identity: ' .. id end
-            local character, characterError = QB.sql.single('SELECT `citizenid`,`license` FROM `players` WHERE `citizenid`=? AND `deleted_at` IS NULL', { owner.citizenid })
+            local character, characterError = Kora.sql.single('SELECT `citizenid`,`license` FROM `players` WHERE `citizenid`=? AND `deleted_at` IS NULL', { owner.citizenid })
             if not character or character.citizenid ~= owner.citizenid or character.license ~= owner.identifier then
                 return false, characterError or 'Stock owner license/character mismatch: ' .. id
             end
@@ -136,7 +136,7 @@ function Housing.legacy.importStock()
             values = { id, source, source }, expectedRows = 1 }
     end
     if #statements == 0 then return true end
-    local result, writeError = QB.sql.transactionChecked(statements,
+    local result, writeError = Kora.sql.transactionChecked(statements,
         { key = 'qbhousing:stock-import', fingerprint = json.encode(statements) })
     if not result or not result.success then return false, writeError or (result and result.message) or 'Stock housing import could not be confirmed.' end
     return true

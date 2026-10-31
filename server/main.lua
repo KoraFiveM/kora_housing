@@ -3,7 +3,7 @@ local RESOURCE = GetCurrentResourceName()
 
 local function fail(message) return nil, message end
 local function register(name, fn, max)
-    QB.callback.register('qbhousing:' .. name, function(src, ...)
+    Kora.callback.register('qbhousing:' .. name, function(src, ...)
         if not State.ready then return nil, 'Housing is unavailable.' end
         local result = table.pack(pcall(fn, src, ...))
         if result[1] then return table.unpack(result, 2, result.n) end
@@ -21,8 +21,8 @@ local function mutation(name, handler)
 end
 
 CreateThread(function()
-    if not QB.sql.ready(60000) then return print('^1[qbhousing]^7 qbsql was not ready; resource disabled.') end
-    local ok, err = QB.sql.migrateFiles(RESOURCE, {
+    if not Kora.sql.ready(60000) then return print('^1[qbhousing]^7 qbsql was not ready; resource disabled.') end
+    local ok, err = Kora.sql.migrateFiles(RESOURCE, {
         { version = 1, name = 'housing', file = 'sql/001_housing.sql' },
         { version = 2, name = 'registry_access', file = 'sql/002_registry_access.sql' },
         { version = 3, name = 'economy', file = 'sql/003_economy.sql' },
@@ -41,7 +41,7 @@ CreateThread(function()
         local doorsReady, doorsErr = Housing.doors.load()
         if not storageReady or not doorsReady then
             print(('[qbhousing] waiting for integrations: %s'):format(tostring(storageErr or doorsErr)))
-            QB.timers.setTimeout(activate, 5000)
+            Kora.timers.setTimeout(activate, 5000)
             return
         end
         State.ready = true
@@ -131,7 +131,7 @@ register('offer', function(src, id, buyer)
     local cid, property = P.citizenId(src), State.get(id)
     if buyer and buyer ~= cid then return fail('The selected buyer must submit or accept the offer through Housing.') end
     if not property then return fail('Property was not found.') end
-    local listing = QB.sql.single('SELECT * FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=?', { id, 'active' })
+    local listing = Kora.sql.single('SELECT * FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=?', { id, 'active' })
     if not listing then return fail('This property has no active listing.') end
     local ok, err = Housing.sales.submitOffer(src, listing.id, listing.price)
     if not ok then return fail(err) end
@@ -139,7 +139,7 @@ register('offer', function(src, id, buyer)
     return true
 end)
 register('confirmPurchase', function(src, id)
-    local offer = QB.sql.single('SELECT o.id FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE l.property_id=? AND o.buyer=? AND o.status=? ORDER BY o.created_at DESC LIMIT 1', { id, P.citizenId(src), 'accepted' })
+    local offer = Kora.sql.single('SELECT o.id FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE l.property_id=? AND o.buyer=? AND o.status=? ORDER BY o.created_at DESC LIMIT 1', { id, P.citizenId(src), 'accepted' })
     if not offer then return fail('The seller and every co-owner must approve an offer before checkout.') end
     local ok, result = Housing.sales.completeSale(src, offer.id)
     if not ok then return fail(result) end

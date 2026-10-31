@@ -15,7 +15,7 @@ local function property(value)
 end
 
 local function isAdmin(src)
-    local ok, allowed = pcall(function() return QB.permissions.hasPermission(src, 'admin', 'qbcore') end)
+    local ok, allowed = pcall(function() return Kora.permissions.hasPermission(src, 'admin', 'qbcore') end)
     return ok and allowed == true
 end
 

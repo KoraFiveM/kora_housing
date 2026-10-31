@@ -61,10 +61,10 @@ function State.prepare(property, audit)
     local definition = Housing.copy(value)
     definition.coowners, definition.permissionGrants = nil, nil
     local write = { query = 'INSERT INTO `qbhousing_properties` (`id`,`owner`,`definition`,`property_type`,`revision`,`ownership_revision`) VALUES (?,?,?,?,?,?)',
-        values = { value.id, value.owner or QB.sql.NULL, json.encode(definition), value.propertyType, value.revision, value.ownershipRevision } }
+        values = { value.id, value.owner or Kora.sql.NULL, json.encode(definition), value.propertyType, value.revision, value.ownershipRevision } }
     if previous then
         write = { query = 'UPDATE `qbhousing_properties` SET `owner`=?,`definition`=?,`property_type`=?,`revision`=?,`ownership_revision`=? WHERE `id`=? AND `revision`=?',
-            values = { value.owner or QB.sql.NULL, json.encode(definition), value.propertyType, value.revision, value.ownershipRevision, value.id, previous.revision }, expectedRows = 1 }
+            values = { value.owner or Kora.sql.NULL, json.encode(definition), value.propertyType, value.revision, value.ownershipRevision, value.id, previous.revision }, expectedRows = 1 }
     end
     local statements = {
         write,
@@ -84,12 +84,12 @@ function State.prepare(property, audit)
         end
     end
     if value.parentId then
-        statements[#statements + 1] = { query = 'INSERT INTO `qbhousing_units` (`property_id`,`parent_id`,`unit_label`) VALUES (?,?,?)', values = { value.id, value.parentId, value.unitLabel or QB.sql.NULL } }
+        statements[#statements + 1] = { query = 'INSERT INTO `qbhousing_units` (`property_id`,`parent_id`,`unit_label`) VALUES (?,?,?)', values = { value.id, value.parentId, value.unitLabel or Kora.sql.NULL } }
     end
     audit = audit or { action = 'legacy.write' }
     statements[#statements + 1] = {
         query = 'INSERT INTO `qbhousing_audit` (`property_id`,`actor`,`action`,`target`,`outcome`,`context`) VALUES (?,?,?,?,?,?)',
-        values = { value.id, audit.actor or QB.sql.NULL, audit.action or 'property.update', audit.target or QB.sql.NULL, 'success',
+        values = { value.id, audit.actor or Kora.sql.NULL, audit.action or 'property.update', audit.target or Kora.sql.NULL, 'success',
             json.encode({ revision = value.revision, ownershipRevision = value.ownershipRevision, permission = audit.permission, allowed = audit.allowed }) },
     }
     return value, statements
@@ -105,7 +105,7 @@ function State.persist(property, audit, extra)
     if not value then return nil, statements end
     for _, statement in ipairs(extra or {}) do statements[#statements + 1] = statement end
     local key = 'qbhousing:state:' .. value.id
-    local result = QB.sql.transactionChecked(statements, { key = key, fingerprint = json.encode(statements) })
+    local result = Kora.sql.transactionChecked(statements, { key = key, fingerprint = json.encode(statements) })
     if not result or not result.success then
         if not result or result.code == 'indeterminate' then State.markUncertain(value.id, key) end
         return nil, result and (result.message or result.error) or 'Property storage is unavailable.'
@@ -176,10 +176,10 @@ function State.reconcileProperty(id)
     local called, ok, err = pcall(function()
         local generation = pending.generation
         for key in pairs(pending.keys) do
-            local settled, waitErr = QB.sql.awaitCheckedOperation(key)
+            local settled, waitErr = Kora.sql.awaitCheckedOperation(key)
             if not settled then return false, waitErr end
         end
-        local result, readErr = QB.sql.transactionChecked({
+        local result, readErr = Kora.sql.transactionChecked({
             { query = 'SELECT `id`,`owner`,`definition`,`property_type`,`revision`,`ownership_revision` FROM `qbhousing_properties` WHERE `id`=? FOR UPDATE', values = { id } },
             { query = 'SELECT `property_id`,`citizenid` FROM `qbhousing_coowners` WHERE `property_id`=?', values = { id } },
             { query = 'SELECT `property_id`,`citizenid`,`action`,`allowed` FROM `qbhousing_permissions` WHERE `property_id`=?', values = { id } },
@@ -206,7 +206,7 @@ function State.reconcileProperty(id)
         end
         if generation ~= pending.generation then return false, 'A newer property write needs reconciliation.' end
         State.uncertain[id] = nil
-        if recoveryTimer and not next(State.uncertain) then QB.timers.clearTimeout(recoveryTimer); recoveryTimer = nil end
+        if recoveryTimer and not next(State.uncertain) then Kora.timers.clearTimeout(recoveryTimer); recoveryTimer = nil end
         State.broadcast()
         return true
     end)
@@ -216,8 +216,8 @@ function State.reconcileProperty(id)
 end
 
 scheduleRecovery = function()
-    if recoveryTimer or not State.ready or not next(State.uncertain) or not QB.timers then return end
-    recoveryTimer = QB.timers.setTimeout(function()
+    if recoveryTimer or not State.ready or not next(State.uncertain) or not Kora.timers then return end
+    recoveryTimer = Kora.timers.setTimeout(function()
         recoveryTimer = nil
         local ids = {}
         for id in pairs(State.uncertain) do ids[#ids + 1] = id end
@@ -230,20 +230,20 @@ scheduleRecovery = function()
 end
 
 AddEventHandler('onResourceStop', function(resource)
-    if resource == GetCurrentResourceName() and recoveryTimer then QB.timers.clearTimeout(recoveryTimer) end
+    if resource == GetCurrentResourceName() and recoveryTimer then Kora.timers.clearTimeout(recoveryTimer) end
 end)
 
 function State.load()
-    if QB.sql.awaitCheckedOperations then
+    if Kora.sql.awaitCheckedOperations then
         for _, prefix in ipairs({ 'qbhousing:', 'qbbanking:qbhousing:' }) do
-            local settled, waitErr = QB.sql.awaitCheckedOperations(prefix)
+            local settled, waitErr = Kora.sql.awaitCheckedOperations(prefix)
             if not settled then return false, waitErr end
         end
     end
-    local backedUp, backupErr = QB.sql.execute([[INSERT IGNORE INTO `qbhousing_legacy_backup` (`property_id`,`owner`,`definition`,`definition_sha256`)
+    local backedUp, backupErr = Kora.sql.execute([[INSERT IGNORE INTO `qbhousing_legacy_backup` (`property_id`,`owner`,`definition`,`definition_sha256`)
         SELECT `id`,`owner`,`definition`,SHA2(`definition`,256) FROM `qbhousing_properties`]])
     if not backedUp then return false, backupErr or 'Legacy backup failed.' end
-    local rows, err = QB.sql.query('SELECT `id`,`owner`,`definition`,`property_type`,`revision`,`ownership_revision` FROM `qbhousing_properties`')
+    local rows, err = Kora.sql.query('SELECT `id`,`owner`,`definition`,`property_type`,`revision`,`ownership_revision` FROM `qbhousing_properties`')
     if not rows then return false, err end
     local loaded = {}
     for _, row in ipairs(rows) do
@@ -273,12 +273,12 @@ function State.load()
         end
     end
     if #backfill > 0 then
-        local imported, importErr = QB.sql.transaction(backfill)
+        local imported, importErr = Kora.sql.transaction(backfill)
         if not imported then return false, importErr or 'Legacy key import failed.' end
     end
-    local coowners, coownerErr = QB.sql.query('SELECT `property_id`,`citizenid` FROM `qbhousing_coowners`')
-    local grants, grantErr = QB.sql.query('SELECT `property_id`,`citizenid`,`action`,`allowed` FROM `qbhousing_permissions`')
-    local units, unitErr = QB.sql.query('SELECT `property_id`,`parent_id`,`unit_label` FROM `qbhousing_units`')
+    local coowners, coownerErr = Kora.sql.query('SELECT `property_id`,`citizenid` FROM `qbhousing_coowners`')
+    local grants, grantErr = Kora.sql.query('SELECT `property_id`,`citizenid`,`action`,`allowed` FROM `qbhousing_permissions`')
+    local units, unitErr = Kora.sql.query('SELECT `property_id`,`parent_id`,`unit_label` FROM `qbhousing_units`')
     if not coowners or not grants or not units then return false, coownerErr or grantErr or unitErr end
     for _, row in ipairs(coowners) do
         local property = loaded[row.property_id]
@@ -310,7 +310,7 @@ function State.load()
     local ids, placeholders = {}, {}
     for cid in pairs(subjects) do ids[#ids + 1], placeholders[#placeholders + 1] = cid, '?' end
     if #ids > 0 then
-        local characters, characterErr = QB.sql.query('SELECT `citizenid` FROM `players` WHERE `deleted_at` IS NULL AND `citizenid` IN (' .. table.concat(placeholders, ',') .. ')', ids)
+        local characters, characterErr = Kora.sql.query('SELECT `citizenid` FROM `players` WHERE `deleted_at` IS NULL AND `citizenid` IN (' .. table.concat(placeholders, ',') .. ')', ids)
         if not characters then return false, characterErr or 'Could not validate property owners.' end
         for _, row in ipairs(characters) do subjects[row.citizenid] = nil end
         local missing = next(subjects)

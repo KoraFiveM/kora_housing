@@ -9,14 +9,14 @@ function AddEventHandler() end
 function TriggerClientEvent() broadcasts = broadcasts + 1 end
 function SetTimeout() end
 exports = { kora_core = { getPlayer = function(_, src) return { citizenid = src == 1 and 'OWNER' or 'GUEST' } end } }
-QB = { permissions = { hasPermission = function() return false end }, timers = {}, sql = { NULL = '__NULL__' } }
-function QB.timers.setTimeout(fn, delay) timers[#timers + 1] = { fn = fn, delay = delay }; return #timers end
-function QB.timers.clearTimeout(id) timers[id] = nil end
-function QB.sql.awaitCheckedOperation()
+Kora = { permissions = { hasPermission = function() return false end }, timers = {}, sql = { NULL = '__NULL__' } }
+function Kora.timers.setTimeout(fn, delay) timers[#timers + 1] = { fn = fn, delay = delay }; return #timers end
+function Kora.timers.clearTimeout(id) timers[id] = nil end
+function Kora.sql.awaitCheckedOperation()
     if pendingWorker then pendingWorker = false; coroutine.yield('old driver worker') end
     return { active = false }
 end
-function QB.sql.transactionChecked(statements)
+function Kora.sql.transactionChecked(statements)
     local sql = statements[1].query
     if sql:find('SELECT', 1, true) ~= 1 then return { success = false, code = 'indeterminate' } end
     if readFailure then return { success = false, code = 'unavailable' } end

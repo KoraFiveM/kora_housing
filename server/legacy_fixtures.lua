@@ -27,7 +27,7 @@ function Legacy.prepareFixtures(property, source)
     end
     if flags.stash then
         local position, capacity = point(decoded(owner.stash)), Config.legacyHousing.stashTiers[tonumber(legacy.tier)]
-        local rows, err = QB.sql.query('SELECT `id` FROM `qbhousing_stashes` WHERE `property_id`=?', { property.id })
+        local rows, err = Kora.sql.query('SELECT `id` FROM `qbhousing_stashes` WHERE `property_id`=?', { property.id })
         if not rows then return nil, err end
         if position and capacity and Housing.finite(capacity.slots) and capacity.slots % 1 == 0 and capacity.slots > 0
             and Housing.finite(capacity.maxWeight) and capacity.maxWeight > 0 and #rows == 0 then
@@ -57,7 +57,7 @@ function Legacy.prepareFixtures(property, source)
     end
     if flags.decorations then
         local decorations = decoded(owner.decorations)
-        local rows, err = QB.sql.query('SELECT `id` FROM `qbhousing_furniture` WHERE `property_id`=?', { property.id })
+        local rows, err = Kora.sql.query('SELECT `id` FROM `qbhousing_furniture` WHERE `property_id`=?', { property.id })
         if not rows then return nil, err end
         local mapped, count, valid = {}, 0, decorations and #decorations <= Config.maxFurniture and #rows == 0
         for index, item in pairs(decorations or {}) do
@@ -83,7 +83,7 @@ function Legacy.prepareFixtures(property, source)
 end
 
 function Legacy.upgradeFixtures()
-    local rows, err = QB.sql.query('SELECT `property_id`,`source_data` FROM `qbhousing_stock_import`')
+    local rows, err = Kora.sql.query('SELECT `property_id`,`source_data` FROM `qbhousing_stock_import`')
     if not rows then return false, err end
     for _, row in ipairs(rows) do
         local property, archive = State.get(row.property_id), decoded(row.source_data)

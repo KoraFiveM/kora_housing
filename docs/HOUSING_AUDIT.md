@@ -97,7 +97,7 @@ These findings are reported separately from implementation. Existing regression 
 
 The existing schema is `qbhousing_properties(id VARCHAR(64) PRIMARY KEY, owner VARCHAR(50) NULL, definition LONGTEXT, updated_at TIMESTAMP)` with an owner index, InnoDB, and utf8mb4. Nearly all relationships currently live in JSON within `definition`. There are no relational offer, ownership-history, lease, or payment tables.
 
-kora_sql provides ordered, resource-scoped `QB.sql.migrateFiles` migrations and checksums through `qbsql_migrations`. Keep migration 1 byte-for-byte intact. Add numbered migrations and include them in the housing manifest. DDL recovery must account for implicit commits; do not promise that a failed multi-statement schema migration rolls back automatically. SQL transaction success also does not mean a conditional update affected a row.
+kora_sql provides ordered, resource-scoped `Kora.sql.migrateFiles` migrations and checksums through `qbsql_migrations`. Keep migration 1 byte-for-byte intact. Add numbered migrations and include them in the housing manifest. DDL recovery must account for implicit commits; do not promise that a failed multi-statement schema migration rolls back automatically. SQL transaction success also does not mean a conditional update affected a row.
 
 New character references should match kora_core's `VARCHAR(50)`, not kora_banking's legacy `VARCHAR(11)`. Preserve raw legacy definitions during conversion. Invalid JSON, mismatched row/JSON IDs, orphan owners, unrecognized shell names, and unknown property types need an explicit migration report; do not silently discard or guess them. Existing `soldAt` and `soldPrice` are historical metadata, not evidence of a reconciled financial transaction.
 

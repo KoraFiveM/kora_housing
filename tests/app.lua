@@ -26,8 +26,8 @@ local function copy(value)
     return result
 end
 local locale = dofile('locales/en.lua')
-QB.lang = function(key) return (assert(locale.app[key:match('^app%.(.+)$')], key)) end
-QB.notify = { send = function(payload) error(payload.message) end }
+Kora.lang = function(key) return (assert(locale.app[key:match('^app%.(.+)$')], key)) end
+Kora.notify = { send = function(payload) error(payload.message) end }
 local property = {
     id = 'existing', label = 'Existing home', propertyType = 'house', owner = 'owner', revision = 4,
     state = 'owned', coowners = { coowner = true }, permissionGrants = { visitor = { entry = false } },
@@ -38,13 +38,13 @@ dofile('shared/schema.lua')
 dofile('shared/permissions.lua')
 Housing.copy = copy
 local actorAdmin = true
-QB.permissions = { hasPermission = function() return actorAdmin end }
+Kora.permissions = { hasPermission = function() return actorAdmin end }
 exports = { kora_core = { getPlayer = function() return { citizenid = 'owner', job = { name = 'unemployed' } } end } }
 Housing.state = { ready = true, properties = { existing = property }, get = function(id) return Housing.state.properties[id] end }
 dofile('server/permissions.lua')
 dofile('server/properties.lua')
 local calls, rejectEdit, grantValue = {}, false, true
-QB.callback = { trigger = function(name, ...)
+Kora.callback = { trigger = function(name, ...)
     local args = table.pack(...)
     calls[name] = args
     if name == 'qbhousing:creatorSnapshot' then
@@ -66,7 +66,7 @@ QB.callback = { trigger = function(name, ...)
     end
     error('Unexpected callback: ' .. name)
 end }
-QB.zones = { startCreator = function(kind)
+Kora.zones = { startCreator = function(kind)
     check(kind == 'poly', 'capture a polygon with the shared creator')
     return { type = 'poly', opts = { points = { { x = 1, y = 1, z = 5 }, { x = 8, y = 1, z = 7 }, { x = 1, y = 8, z = 6 } }, thickness = 4 } }
 end }
@@ -155,7 +155,7 @@ Housing.world = { ready = true, snapshot = function() return true, { space = { r
     furniture = { { id = 'chair', model = 'prop_chair_01a', ownerCid = 'owner', revision = 1 } },
     cameras = { { id = 'camera', label = 'Front room', fov = 60, console = { x = 1, y = 2, z = 3 }, revision = 1 } },
     grants = { { citizenid = 'guest', expiresAt = 1700000000 } }, alarm = { armed = true, revision = 2, doorUnlock = true, panic = true, cooldown = 60 } } end }
-QB.sql = { query = function(sql) return sql:find('qbhousing_offers') and copy(richSales.offers) or { copy(richLease) } end }
+Kora.sql = { query = function(sql) return sql:find('qbhousing_offers') and copy(richSales.offers) or { copy(richLease) } end }
 Housing.app.open('properties')
 result = act('property:open', { itemId = 'existing' })
 check(form(result.app, 'property', 'rental') ~= nil and form(result.app, 'property', 'world') ~= nil, 'populated rental and security definitions pass the real AppShell validator')
@@ -221,7 +221,7 @@ local events, zones, commands = {}, {}, {}
 local syncs, closes = 0, 0
 local environment = {}
 for key, value in pairs(_G) do environment[key] = value end
-environment.QB = { interact = {
+environment.Kora = { interact = {
     addBoxZone = function(id) zones[id] = true; return {} end,
     removeZone = function(id) zones[id] = nil end,
 } }
@@ -264,7 +264,7 @@ environment.PlayerPedId = function() return 41 end
 environment.DoesEntityExist = function(object) return object == 91 end
 environment.DeleteEntity = function() removed = removed + 1 end
 environment.SetEntityCoords = function() teleported = teleported + 1 end
-environment.QB.notify = { send = function() failed = failed + 1 end }
+environment.Kora.notify = { send = function() failed = failed + 1 end }
 environment.exports = { kora_interior = { createGeometry = function()
     events['QBCore:Client:OnPlayerUnload']()
     return { { 91 }, {} }

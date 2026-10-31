@@ -17,15 +17,15 @@ local function removeShell()
     removeObjects(shellObjects)
     shellObjects, currentProperty = {}, nil
     if Housing.fixtures then Housing.fixtures.clear() end
-    if leavePrompt then QB.textui.hide(leavePrompt); leavePrompt = nil end
+    if leavePrompt then Kora.textui.hide(leavePrompt); leavePrompt = nil end
     if hadProperty then TriggerServerEvent('qbhousing:server:leaveProperty') end
 end
 
-local function notify(message, kind) QB.notify.send({ title = 'Housing', message = message, type = kind or 'info' }) end
+local function notify(message, kind) Kora.notify.send({ title = 'Housing', message = message, type = kind or 'info' }) end
 local function money(value) return ('$%s'):format(('%.0f'):format(tonumber(value) or 0)) end
 
 local function clearZones()
-    for id in pairs(interactionZones) do QB.interact.removeZone(id) end
+    for id in pairs(interactionZones) do Kora.interact.removeZone(id) end
     interactionZones = {}
 end
 
@@ -34,7 +34,7 @@ local function rebuildZones()
     for id, property in pairs(Properties) do
         if property.interior and property.interior.entrance and property.state ~= 'unowned' and property.state ~= 'archived' and property.state ~= 'archiving' then
             local name = 'qbhousing:' .. id
-            local zone = QB.interact.addBoxZone(name,
+            local zone = Kora.interact.addBoxZone(name,
                 vector3(property.interior.entrance.x, property.interior.entrance.y, property.interior.entrance.z),
                 { x = 2.0, y = 2.0, z = 2.5, w = property.interior.entrance.w or 0.0 }, {
                     options = {{ label = property.owner and 'Enter property' or 'View property', icon = 'house',
@@ -46,12 +46,12 @@ local function rebuildZones()
 end
 
 local function hydrate()
-    local payload, err = QB.callback.trigger('qbhousing:hydrate')
+    local payload, err = Kora.callback.trigger('qbhousing:hydrate')
     if not payload then return notify(err or 'Housing is unavailable.', 'error') end
     Properties = payload.properties or {}
     rebuildZones()
     if Housing.scene then
-        local ok, spaces = QB.callback.trigger('qbhousing:worldSpaces')
+        local ok, spaces = Kora.callback.trigger('qbhousing:worldSpaces')
         if ok then Housing.scene.syncSpaces(spaces) end
     end
 end
@@ -65,9 +65,9 @@ RegisterNetEvent('qbhousing:client:synced', function(properties)
     Housing.app.sync()
 end)
 RegisterNetEvent('qbhousing:client:purchaseOffer', function(property)
-    local decision = QB.nui.openAlert({ title = 'Purchase ' .. property.id, message = money(property.listing.price) .. ' · This is final.' })
+    local decision = Kora.nui.openAlert({ title = 'Purchase ' .. property.id, message = money(property.listing.price) .. ' · This is final.' })
     if not decision or not decision.confirmed then return end
-    local saved, err = QB.callback.trigger('qbhousing:confirmPurchase', property.id)
+    local saved, err = Kora.callback.trigger('qbhousing:confirmPurchase', property.id)
     notify(saved and 'Property purchased.' or err or 'Purchase failed.', saved and 'success' or 'error')
 end)
 
@@ -107,13 +107,13 @@ CreateThread(function()
         local coords = GetEntityCoords(PlayerPedId())
         local distance = #(coords - vector3(origin.x + (exit.x or 0.0), origin.y + (exit.y or 0.0), origin.z + (exit.z or 0.0)))
         if distance < 1.5 then
-            leavePrompt = leavePrompt or QB.textui.show('Leave property', { key = 'E' })
+            leavePrompt = leavePrompt or Kora.textui.show('Leave property', { key = 'E' })
             if IsControlJustReleased(0, 38) then
                 local entrance = currentProperty.interior.entrance
                 removeShell()
                 if entrance then SetEntityCoords(PlayerPedId(), entrance.x, entrance.y, entrance.z, false, false, false, false) end
             end
-        elseif leavePrompt then QB.textui.hide(leavePrompt); leavePrompt = nil end
+        elseif leavePrompt then Kora.textui.hide(leavePrompt); leavePrompt = nil end
         ::continue::
     end
 end)

@@ -11,8 +11,8 @@ return function()
     local env = {}; for k,v in pairs(_G) do env[k]=v end
     env.Housing, env.Config, env.json = nil, nil, json
     env.AddEventHandler, env.print = function() end, function() end
-    env.QB = { sql = { NULL = '\0qbsql:null\0', awaitCheckedOperations = function() return {} end } }
-    local sql = env.QB.sql
+    env.Kora = { sql = { NULL = '\0qbsql:null\0', awaitCheckedOperations = function() return {} end } }
+    local sql = env.Kora.sql
     local function values(map) local out = {}; for _,v in pairs(map) do out[#out+1]=copy(v) end; return out end
     function sql.query(query, params)
         if f.readFailure then return nil, 'read failure' end

@@ -9,7 +9,7 @@ function CreateThread(fn)
     if coroutine.status(co)~='dead' then thread=co end
 end
 function SetEntityRotation(entity,x,y,z) objects[entity].rotation={x,y,z} end
-QB={notify={send=function(data) notices[#notices+1]=data end},
+Kora={notify={send=function(data) notices[#notices+1]=data end},
     interact={addBoxZone=function(name,coords,_,opts) zones[name]={coords=coords,action=opts.options[1].action};return name end,
         removeZone=function(name) zones[name]=nil end},
     callback={trigger=function(name,id,kind)

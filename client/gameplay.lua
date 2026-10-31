@@ -15,12 +15,12 @@ local function vector(id, label, default, required) return field(id, label, 'vec
 local function money(value) return ('$%.0f'):format(tonumber(value) or 0) end
 local function time(value) return tonumber(value) and os.date('%Y-%m-%d %H:%M', tonumber(value)) or tostring(value or '—') end
 local function request(name, ...)
-    local ok, result = QB.callback.trigger('qbhousing:' .. name, ...)
+    local ok, result = Kora.callback.trigger('qbhousing:' .. name, ...)
     if ok ~= true then return nil, result or 'Housing is unavailable.' end
     return result
 end
 local function capturePlacement(model, options)
-    local ok, result = pcall(QB.placement.start, model, options)
+    local ok, result = pcall(Kora.placement.start, model, options)
     if not ok then return nil, tostring(result) end
     return result
 end
@@ -280,7 +280,7 @@ local function worldFlow(view, action, values, itemId)
     CreateThread(function()
         local ok, err
         if action == 'world:space' then
-            local captured = QB.zones.startCreator('poly', world.space and world.space.bounds)
+            local captured = Kora.zones.startCreator('poly', world.space and world.space.bounds)
             if captured and captured.opts then
                 local options, minZ = captured.opts, math.huge
                 for _, point in ipairs(captured.opts.points) do minZ = math.min(minZ, point.z) end
@@ -313,20 +313,20 @@ local function worldFlow(view, action, values, itemId)
             if camera then Housing.scene.viewCamera(camera); return end
         end
         if lifecycle ~= started then return end
-        if err then QB.notify.send({ title = 'Housing', message = err, type = 'error' }) end
+        if err then Kora.notify.send({ title = 'Housing', message = err, type = 'error' }) end
         reopen(property.id, 'world')
     end)
 end
 
 RegisterNetEvent('qbhousing:client:placementClosed', function(token, propertyId, reason)
     if not activePlacement or activePlacement.token ~= token or activePlacement.propertyId ~= propertyId then return end
-    QB.placement.cancel()
-    if reason then QB.notify.send({ title = 'Housing', message = reason, type = 'error' }) end
+    Kora.placement.cancel()
+    if reason then Kora.notify.send({ title = 'Housing', message = reason, type = 'error' }) end
 end)
 
 local function clearPlacement()
     lifecycle = lifecycle + 1
-    if activePlacement then pcall(QB.placement.cancel); activePlacement = nil end
+    if activePlacement then pcall(Kora.placement.cancel); activePlacement = nil end
 end
 AddEventHandler('QBCore:Client:OnPlayerUnload', clearPlacement)
 AddEventHandler('onClientResourceStop', function(resource) if resource == GetCurrentResourceName() then clearPlacement() end end)
@@ -386,16 +386,16 @@ function Gameplay.action(action, context, view)
         CreateThread(function()
             local world, err = request('worldSnapshot', values.propertyId)
             if lifecycle ~= started then return end
-            if not world or not world.space then QB.notify.send({ title = 'Housing', message = err or 'Configure the destination physical space first.', type = 'error' }); return end
+            if not world or not world.space then Kora.notify.send({ title = 'Housing', message = err or 'Configure the destination physical space first.', type = 'error' }); return end
             local coords = GetEntityCoords(PlayerPedId())
             activePlacement = { propertyId = values.propertyId }
             local placement, placementErr = capturePlacement(entitlement.model, { coords = { x = coords.x, y = coords.y, z = coords.z }, bounds = world.space.bounds, numericInput = true, raycast = true, copy = false })
             activePlacement = nil
             if lifecycle ~= started then return end
-            if placementErr then QB.notify.send({ title = 'Housing', message = placementErr, type = 'error' }) end
+            if placementErr then Kora.notify.send({ title = 'Housing', message = placementErr, type = 'error' }) end
             if placement then
                 local saved; saved, err = request('claimFurniture', entitlement.id, values.propertyId, placement)
-                if not saved then QB.notify.send({ title = 'Housing', message = err, type = 'error' }) end
+                if not saved then Kora.notify.send({ title = 'Housing', message = err, type = 'error' }) end
             end
             reopen(values.propertyId, 'world')
         end)
@@ -426,13 +426,13 @@ function Gameplay.action(action, context, view)
         if not rows then return result(nil, err) end
         local lines = {}
         for _, row in ipairs(rows) do lines[#lines + 1] = time(row.created_at) .. ' · ' .. tostring(row.action) .. ' · ' .. tostring(row.actor or 'System') .. ' · ' .. tostring(row.outcome) end
-        QB.nui.openAlert({ title = 'Property audit · ' .. values.propertyId, message = #lines > 0 and table.concat(lines, '\n') or 'No audit events.', size = 'xl' })
+        Kora.nui.openAlert({ title = 'Property audit · ' .. values.propertyId, message = #lines > 0 and table.concat(lines, '\n') or 'No audit events.', size = 'xl' })
         return {}
     end
     if action == 'admin:archive' then
         local preview, err = request('archivePreflight', values.propertyId)
         if not preview then return result(nil, err) end
-        local confirmed = QB.nui.openAlert({ title = 'Archive property', message = (preview.summary or preview.detail or '') .. '\n\nArchive ' .. values.propertyId .. '? Ownership, history and protected belongings are retained. New listing and occupancy stop.', destructive = true })
+        local confirmed = Kora.nui.openAlert({ title = 'Archive property', message = (preview.summary or preview.detail or '') .. '\n\nArchive ' .. values.propertyId .. '? Ownership, history and protected belongings are retained. New listing and occupancy stop.', destructive = true })
         if not confirmed or not confirmed.confirmed then return {} end
         return result(request('archiveProperty', values.propertyId, preview.token))
     end

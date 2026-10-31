@@ -37,7 +37,7 @@ local function setup()
     env.TriggerClientEvent = function(name, target, ...)
         f.events[#f.events + 1] = { name = name, target = target, args = { ... } }
     end
-    env.QB = {
+    env.Kora = {
         sql = {},
         permissions = { hasPermission = function(src) return src == admin end },
         callback = { register = function(name, handler, options)
@@ -45,8 +45,8 @@ local function setup()
             h.assertTrue(options and options.rateLimit, 'Every client callback must declare a request limit')
         end },
     }
-    env.QB.sql.NULL = {}
-    env.QB.sql.transaction = function(statements, params)
+    env.Kora.sql.NULL = {}
+    env.Kora.sql.transaction = function(statements, params)
         f.writes[#f.writes + 1] = { statements = statements, params = params }
         if f.beforeWrite then f.beforeWrite() end
         if f.pauseNextWrite then
@@ -56,16 +56,16 @@ local function setup()
         if f.failWrite then return false, databaseError end
         return true
     end
-    env.QB.sql.transactionChecked = function(statements)
-        local ok, err = env.QB.sql.transaction(statements)
+    env.Kora.sql.transactionChecked = function(statements)
+        local ok, err = env.Kora.sql.transaction(statements)
         return { success = ok, error = err }
     end
-    env.QB.sql.execute = function(sql, params)
+    env.Kora.sql.execute = function(sql, params)
         f.writes[#f.writes + 1] = { statement = sql, params = params }
         if f.failWrite then return nil, databaseError end
         return { affectedRows = 1 }
     end
-    env.QB.sql.query = function(sql, params)
+    env.Kora.sql.query = function(sql, params)
         f.queries[#f.queries + 1] = { sql = sql, params = params }
         if f.query then return f.query(sql, params) end
         return {}
@@ -630,7 +630,7 @@ h.test('backup or legacy-key import failure prevents publishing a new registry',
     f.failWrite = true
     h.assertFalse(f.state.load())
     h.assertEqual(json.encode(f.state.properties), before)
-    f.env.QB.sql.execute = function() return { affectedRows = 1 } end
+    f.env.Kora.sql.execute = function() return { affectedRows = 1 } end
     h.assertFalse(f.state.load())
     h.assertEqual(json.encode(f.state.properties), before)
 end)

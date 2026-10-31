@@ -34,7 +34,7 @@ function DoesCamExist(cam) return cams[cam] == true end
 function DestroyCam(cam) cams[cam] = nil end
 function SetCamActive() end
 function RenderScriptCams() end
-QB = {
+Kora = {
     notify = { send = function(payload) notices[#notices + 1] = payload end },
     callback = { trigger = function(name)
         if name == 'qbhousing:subscribeSpace' then if pauseSubscribe then coroutine.yield() end; return true, sceneReply end
@@ -105,18 +105,18 @@ check(frozen and not next(cams) and not next(controlLeases), 'revocation restore
 frozen = false
 pauseSubscribe = false
 zones[1].onEnter()
-QB.entities.remove = function() error('kora_lib already stopped') end
+Kora.entities.remove = function() error('kora_lib already stopped') end
 exports.kora_interior.removeGeometry = function() error('qbinterior already stopped') end
 Housing.scene.clear()
 check(not next(entities) and not next(geometries) and zones[1].removed, 'character/resource cleanup removes the scene and its spatial registration')
 dofile('config.lua')
 Housing.app = { refreshProperty = function() refreshed = refreshed + 1 end }
-QB.placement.start = function()
+Kora.placement.start = function()
     coroutine.yield()
     if placementCancelled then return nil end
     return { coords = { x = 1, y = 2, z = 3 } }
 end
-QB.placement.cancel = function() placementCancelled = true; return true end
+Kora.placement.cancel = function() placementCancelled = true; return true end
 dofile('client/gameplay.lua')
 local view = { property = { id = 'home' }, world = { space = { bounds = {} } } }
 Housing.gameplay.action('world:furniture-place', { value = { model = 'prop_chair_01a' } }, view)
@@ -130,7 +130,7 @@ Housing.gameplay.action('world:furniture-place', { value = { model = 'prop_chair
 events['QBCore:Client:OnPlayerUnload']()
 finish()
 check(placementCancelled and refreshed == 1, 'character unload cancels an editor without reopening the housing app')
-QB.placement.start = function() error('The preview model could not be streamed.') end
+Kora.placement.start = function() error('The preview model could not be streamed.') end
 Housing.gameplay.action('world:furniture-place', { value = { model = 'prop_chair_01a' } }, view)
 check(refreshed == 2 and placementSaves == 0 and notices[#notices].message:find('could not be streamed', 1, true), 'a rejected shared placement reports its error and returns to the property app')
 print(('qbhousing scene: %d checks passed'):format(checks))

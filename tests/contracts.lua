@@ -9,12 +9,12 @@ function RegisterNetEvent(name, fn) assert(not events[name], 'Repeated event ' .
 function TriggerClientEvent() end
 function SetTimeout() end
 exports = setmetatable({}, { __call = function(_, name, fn) provided[name] = fn end })
-QB = { callback = { register = function(name, fn, options)
+Kora = { callback = { register = function(name, fn, options)
     assert(not callbacks[name], 'Repeated callback ' .. name)
     assert(options.rateLimit.max and options.rateLimit.window, 'Callback needs rate limit')
     callbacks[name] = fn
 end }, sql = {}, timers = {} }
-QB.compat = dofile('../kora_lib/compat/provider.lua')()
+Kora.compat = dofile('../kora_lib/compat/provider.lua')()
 dofile('config.lua'); dofile('shared/schema.lua'); dofile('shared/permissions.lua')
 local function read(path) local f = assert(io.open(path)); local s = f:read('*a'); f:close(); return s end
 local manifest = read('fxmanifest.lua')
@@ -25,7 +25,7 @@ for file in manifest:match('client_scripts%s*{(.-)}'):gmatch("'([^']+)'") do
     for name in source:gmatch("request%('([^']+)'") do
         assert(callbacks['qbhousing:' .. name], file .. ' calls unregistered ' .. name); checked = checked + 1
     end
-    for name in source:gmatch("QB.callback.trigger%('([^']+)'") do
+    for name in source:gmatch("Kora.callback.trigger%('([^']+)'") do
         assert(name == 'qbhousing:' or callbacks[name], file .. ' calls unregistered ' .. name); checked = checked + 1
     end
     for name in source:gmatch("TriggerServerEvent%('([^']+)'") do

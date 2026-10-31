@@ -166,7 +166,7 @@ H.test('legacy listing edits invalidate the previous quote before republishing a
     local f = setup()
     local callbacks = {}
     f.players[1].job = { name = 'realestate' }
-    f.env.QB.callback = { register = function(name, fn) callbacks[name] = fn end }
+    f.env.Kora.callback = { register = function(name, fn) callbacks[name] = fn end }
     f.env.CreateThread, f.env.RegisterNetEvent = function() end, function() end
     setmetatable(f.env.exports, { __call = function() end })
     f.housing.admin, f.housing.doors = {}, {}

@@ -133,7 +133,7 @@ return function(options)
         end
         return { success = true, results = {} }
     end
-    env.QB = { sql = sql, permissions = { hasPermission = function(src) return f.admin == src end }, timers = {
+    env.Kora = { sql = sql, permissions = { hasPermission = function(src) return f.admin == src end }, timers = {
         setTimeout = function(fn) f.timers[#f.timers + 1] = fn; return #f.timers end, clearTimeout = function() end } }
     local banking, inventory, garages = {}, {}, {}
     function banking.ExecuteTransaction(_, key, request)

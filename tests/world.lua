@@ -45,7 +45,7 @@ Housing.state.withWrite = function(id, handler)
 end
 local dispatched = 0
 exports = { kora_dispatch = { createCall = function(_, payload) dispatched = dispatched + 1; return 55, 1 end } }
-QB = { sql = {
+Kora = { sql = {
     NULL = {},
     transactionChecked = function(statements, operation)
         writes[#writes + 1] = statements

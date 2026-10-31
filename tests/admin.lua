@@ -7,18 +7,18 @@ local function setup()
     e.GetCurrentResourceName = function() return 'kora_housing' end
     e.AddEventHandler = function() end
     e.TriggerClientEvent = function(name) f.events[#f.events + 1] = name end
-    e.QB = { timers = { clearTimeout = function() end, setTimeout = function(fn) f.timers[#f.timers+1] = fn; return #f.timers end }, sql = { NULL = '__NULL__' } }
-    function e.QB.sql.transactionChecked(writes)
+    e.Kora = { timers = { clearTimeout = function() end, setTimeout = function(fn) f.timers[#f.timers+1] = fn; return #f.timers end }, sql = { NULL = '__NULL__' } }
+    function e.Kora.sql.transactionChecked(writes)
         if f.fail then return { success = false, message = 'SQL unavailable' } end
         f.writes[#f.writes + 1] = writes
         return { success = true }
     end
-    function e.QB.sql.scalar(sql)
+    function e.Kora.sql.scalar(sql)
         if sql == 'SELECT UUID()' then return 'uuid' end
         if f.dbFail then return nil, 'SQL unavailable' end
         return f.leaseBlock and 1 or 0
     end
-    function e.QB.sql.query() return f.audit or {} end
+    function e.Kora.sql.query() return f.audit or {} end
     local function load(path) assert(loadfile(path, 't', e))() end
     load('config.lua'); load('shared/schema.lua'); load('server/state.lua')
     local H, S = e.Housing, e.Housing.state

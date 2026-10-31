@@ -89,7 +89,7 @@ local function ownership(property)
     end
     table.sort(decorations, function(a, b) return a.nativeId < b.nativeId end)
     for index, item in ipairs(decorations) do item.objectId, item.nativeId = index, nil end
-    local stashes, err = QB.sql.query('SELECT `id`,`coords` FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=? AND `lease_id` IS NULL ORDER BY `id`', { property.id, 'active' })
+    local stashes, err = Kora.sql.query('SELECT `id`,`coords` FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=? AND `lease_id` IS NULL ORDER BY `id`', { property.id, 'active' })
     if not stashes then return nil, err or 'Native housing stash storage is unavailable.' end
     if #stashes > 1 or #(property.clothing or {}) > 1 then
         return nil, 'Legacy housing requires a single primary stash/outfit mapping: ' .. property.id

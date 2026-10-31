@@ -36,7 +36,7 @@ local function execute(row)
     end
     if receipt and receipt.status == 'completed' then return true, publish(row) end
     if called and (code == 'insufficient_funds' or code == 'conflict' or code == 'invalid_request' or code == 'rejected' or code == 'not_found') then
-        local updated = QB.sql.update('UPDATE `qbhousing_transactions` SET `status`=?,`error`=?,`updated_at`=? WHERE `id`=? AND `status`=?',
+        local updated = Kora.sql.update('UPDATE `qbhousing_transactions` SET `status`=?,`error`=?,`updated_at`=? WHERE `id`=? AND `status`=?',
             { 'rejected', code .. ':' .. tostring(message or 'Payment rejected.'), os.time(), row.id, 'pending' })
         if not updated or updated < 1 then return false, 'Payment rejection is being confirmed.', 'pending' end
         T.pending[row.property_id] = nil
@@ -56,15 +56,15 @@ function T.resume()
             if not ok then print(('[qbhousing] transaction recovery deferred: %s'):format(tostring(err))) end
         end
     end
-    if next(T.pending) then timer = QB.timers.setTimeout(T.resume, 30000) end
+    if next(T.pending) then timer = Kora.timers.setTimeout(T.resume, 30000) end
 end
 
 function T.schedule()
-    if not timer and next(T.pending) then timer = QB.timers.setTimeout(T.resume, 30000) end
+    if not timer and next(T.pending) then timer = Kora.timers.setTimeout(T.resume, 30000) end
 end
 
 function T.load()
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_transactions` WHERE `status`=?', { 'pending' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_transactions` WHERE `status`=?', { 'pending' })
     if not rows then return false, err end
     T.pending = {}
     for _, row in ipairs(rows) do T.pending[row.property_id] = row end
@@ -73,13 +73,13 @@ function T.load()
 end
 
 function T.nextKey(base)
-    local count, err = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_transactions` WHERE `id` LIKE ?', { base .. ':%' })
+    local count, err = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_transactions` WHERE `id` LIKE ?', { base .. ':%' })
     if count == nil then return nil, err end
     return base .. ':' .. tostring(tonumber(count) + 1)
 end
 
 function T.run(key, kind, actor, property, debits, credits, statements, effects)
-    local existing, readErr = QB.sql.single('SELECT * FROM `qbhousing_transactions` WHERE `id`=?', { key })
+    local existing, readErr = Kora.sql.single('SELECT * FROM `qbhousing_transactions` WHERE `id`=?', { key })
     if readErr then return false, 'Transaction storage is unavailable.', 'unavailable' end
     if existing then
         if existing.property_id ~= property.id or existing.kind ~= kind or existing.actor ~= actor then return false, 'Transaction identity conflict.', 'conflict' end
@@ -103,14 +103,14 @@ function T.run(key, kind, actor, property, debits, credits, statements, effects)
         for _, entry in ipairs(group.rows) do
             leg = leg + 1
             writes[#writes + 1] = { query = 'INSERT INTO `qbhousing_ledger` (`operation_id`,`leg`,`citizenid`,`account`,`amount`,`kind`) VALUES (?,?,?,?,?,?)',
-                values = { key, leg, entry.citizenid or QB.sql.NULL, entry.account or QB.sql.NULL, group.sign * entry.amount, group.kind } }
+                values = { key, leg, entry.citizenid or Kora.sql.NULL, entry.account or Kora.sql.NULL, group.sign * entry.amount, group.kind } }
         end
     end
     local now = os.time()
     writes[#writes + 1] = { query = 'UPDATE `qbhousing_transactions` SET `status`=?,`updated_at`=? WHERE `id`=? AND `status`=?', values = { 'completed', now, key, 'pending' }, expectedRows = 1 }
     local request = { debits = debits, credits = credits, statements = writes, context = { kind = kind, propertyId = property.id, actor = actor, policyVersion = Config.salePolicyVersion } }
     local row = { id = key, property_id = property.id, kind = kind, actor = actor, status = 'pending', request = json.encode(request), result = json.encode(effects), created_at = now }
-    local inserted, err = QB.sql.insert([[INSERT INTO `qbhousing_transactions` (`id`,`property_id`,`kind`,`actor`,`status`,`request`,`result`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?)]],
+    local inserted, err = Kora.sql.insert([[INSERT INTO `qbhousing_transactions` (`id`,`property_id`,`kind`,`actor`,`status`,`request`,`result`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?)]],
         { key, property.id, kind, actor, 'pending', row.request, row.result, now, now })
     if not inserted then return false, err or 'Transaction could not be reserved.', 'unavailable' end
     T.pending[property.id] = row
@@ -120,5 +120,5 @@ function T.run(key, kind, actor, property, debits, credits, statements, effects)
 end
 
 AddEventHandler('onResourceStop', function(resource)
-    if resource == GetCurrentResourceName() and timer then QB.timers.clearTimeout(timer) end
+    if resource == GetCurrentResourceName() and timer then Kora.timers.clearTimeout(timer) end
 end)

@@ -8,7 +8,7 @@ function GetInvokingResource() return 'kora_housing' end
 dofile('../kora_lib/build/initiate.lua')
 dofile('../kora_lib/modules/util/shared.lua')
 dofile('../kora_lib/local/resources/client.lua')
-QB.compat=dofile('../kora_lib/compat/provider.lua')()
+Kora.compat=dofile('../kora_lib/compat/provider.lua')()
 local provided,entities,threads,moves={}, {}, {}, {}
 local fades,fixtureEntries,pausing,nextEntity=0,0,true,10
 exports=setmetatable({kora_interior=setmetatable({}, {__index=function(_,name) return function(_,...) return provided[name](...) end end})},
@@ -26,11 +26,11 @@ function DoesEntityExist(id) return entities[id]~=nil end
 function DeleteEntity(id) entities[id]=nil end
 function SetEntityHeading() end
 function SetEntityCoords(_,x,y,z) moves[#moves+1]={x=x,y=y,z=z} end
-QB.stream={loadModel=function(_,callback) if pausing then coroutine.yield() end;callback(123);return true end}
-QB.visuals={fade=function() fades=fades+1 end}
-QB.interact={removeZone=function() end}
-QB.textui={hide=function() end}
-QB.notify={send=function() end}
+Kora.stream={loadModel=function(_,callback) if pausing then coroutine.yield() end;callback(123);return true end}
+Kora.visuals={fade=function() fades=fades+1 end}
+Kora.interact={removeZone=function() end}
+Kora.textui={hide=function() end}
+Kora.notify={send=function() end}
 dofile('../kora_interior/client/main.lua')
 resource='kora_housing'
 Housing={fixtures={clear=function() end,enter=function() fixtureEntries=fixtureEntries+1 end},app={close=function() end}}

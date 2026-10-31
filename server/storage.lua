@@ -31,7 +31,7 @@ local function policy(row)
         if row.status == 'recovery' then
             if not context or not context.recovery then return false end
             if row.lease_id then return cid == row.tenant end
-            local entitled = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_recovery` WHERE `kind`=? AND `reference`=? AND `citizenid`=? AND `status`=?', { 'stash', row.id, cid, 'pending' })
+            local entitled = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_recovery` WHERE `kind`=? AND `reference`=? AND `citizenid`=? AND `status`=?', { 'stash', row.id, cid, 'pending' })
             return tonumber(entitled or 0) > 0
         end
         if row.status ~= 'active' then return false end
@@ -55,7 +55,7 @@ local function register(row)
         local rebound = invoke('RebindStashPolicy', row.id, policy(row))
         if rebound then return true end
     end
-    local tier = tonumber(QB.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { property.id }))
+    local tier = tonumber(Kora.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { property.id }))
     if not tier then return false, 'Storage tier is unavailable.' end
     local legacyStash = property.legacy and property.legacy.stash
     local capacity = legacyStash and legacyStash.id == row.id and legacyStash.capacity or Config.storageTiers[tier]
@@ -74,7 +74,7 @@ local function register(row)
 end
 
 function S.refresh(id)
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`<>?', { id, 'claimed' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`<>?', { id, 'claimed' })
     if not rows then return false, err end
     for _, row in ipairs(rows) do
         local ok, registerErr = register(row)
@@ -89,9 +89,9 @@ function S.configureStash(src, id, payload, revision)
         if not property or property.revision ~= revision or not P.can(src, id, 'property.edit') or type(payload) ~= 'table' or not Housing.validCoords(payload.coords) or not Housing.world.contains(id, payload.coords) then return false, 'Choose an authorized stash position inside the property.' end
         local stashId = payload.id or 'p:' .. id
         if type(stashId) ~= 'string' or #stashId > 100 then return false, 'Invalid stash identity.' end
-        local existing = QB.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { stashId })
+        local existing = Kora.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { stashId })
         if existing and (existing.property_id ~= id or existing.lease_id or existing.status ~= 'active') then return false, 'This stash cannot be reconfigured.' end
-        local count = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL', { id })
+        local count = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL', { id })
         if count == nil or not existing and tonumber(count) >= Config.maxStashes then return false, 'Stash limit reached or storage unavailable.' end
         local changed = Housing.copy(property)
         if changed.legacy and changed.legacy.stash and changed.legacy.stash.id == stashId then changed.legacy.stash.coords = Housing.copy(payload.coords) end
@@ -110,9 +110,9 @@ function S.prepareLease(lease)
     local position = coords(property)
     if not position then return false, 'Configure a property space or stash position before renting it.' end
     local id = 'lease:' .. lease.id
-    local inserted, err = QB.sql.execute('INSERT IGNORE INTO `qbhousing_stashes` (`id`,`property_id`,`lease_id`,`tenant`,`status`,`coords`) VALUES (?,?,?,?,?,?)', { id, lease.property_id, lease.id, lease.tenant, 'prepared', json.encode(position) })
+    local inserted, err = Kora.sql.execute('INSERT IGNORE INTO `qbhousing_stashes` (`id`,`property_id`,`lease_id`,`tenant`,`status`,`coords`) VALUES (?,?,?,?,?,?)', { id, lease.property_id, lease.id, lease.tenant, 'prepared', json.encode(position) })
     if not inserted then return false, err end
-    local row = QB.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { id })
+    local row = Kora.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { id })
     return register(row)
 end
 
@@ -122,11 +122,11 @@ function S.openStash(src, id, stashId)
     local property = State.get(id)
     local expected = lease and 'lease:' .. lease.id or property and property.legacy and property.legacy.stash and property.legacy.stash.id or 'p:' .. id
     stashId = stashId or expected
-    local row = QB.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=? AND `property_id`=?', { stashId, id })
+    local row = Kora.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=? AND `property_id`=?', { stashId, id })
     if not row and not lease and stashId == expected then
         local property, position = State.get(id), coords(State.get(id))
         if not position then return false, 'Configure a stash position first.' end
-        local saved, err = QB.sql.execute('INSERT IGNORE INTO `qbhousing_stashes` (`id`,`property_id`,`status`,`coords`) VALUES (?,?,?,?)', { stashId, id, 'active', json.encode(position) })
+        local saved, err = Kora.sql.execute('INSERT IGNORE INTO `qbhousing_stashes` (`id`,`property_id`,`status`,`coords`) VALUES (?,?,?,?)', { stashId, id, 'active', json.encode(position) })
         if not saved then return false, err end
         row = { id = stashId, property_id = id, status = 'active', coords = position }
     end
@@ -138,7 +138,7 @@ end
 
 function S.freezeForSale(id)
     S.frozen[id] = true
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=? AND `lease_id` IS NULL', { id, 'active' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=? AND `lease_id` IS NULL', { id, 'active' })
     if not rows then S.frozen[id] = nil; return false, err end
     for _, row in ipairs(rows) do
         local ok, blockedErr = invoke('SetStashBlocked', row.id, true)
@@ -151,7 +151,7 @@ end
 
 function S.unfreeze(id)
     S.frozen[id] = nil
-    local rows = QB.sql.query('SELECT `id` FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL', { id }) or {}
+    local rows = Kora.sql.query('SELECT `id` FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL', { id }) or {}
     for _, row in ipairs(rows) do invoke('SetStashBlocked', row.id, false) end
 end
 
@@ -159,7 +159,7 @@ function S.purchaseStorage(src, id)
     return D.lock(id, function()
         local property, cid = State.get(id), P.citizenId(src)
         if not property or not P.can(src, id, 'storage.upgrade') then return false, 'You cannot upgrade this storage.' end
-        local tier = tonumber(QB.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { id }))
+        local tier = tonumber(Kora.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { id }))
         if not tier then return false, 'Storage is unavailable.' end
         local nextTier = Config.storageTiers[tier + 1]
         if not nextTier then return false, 'This property already has the largest storage tier.' end
@@ -176,7 +176,7 @@ function S.purchaseStorage(src, id)
 end
 
 function S.recoverLease(lease)
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `lease_id`=? AND `status`<>?', { lease.id, 'claimed' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `lease_id`=? AND `status`<>?', { lease.id, 'claimed' })
     if not rows then return false, err end
     for _, row in ipairs(rows) do
         row.status = 'recovery'
@@ -199,9 +199,9 @@ end
 function S.recoveryList(src)
     local cid = P.citizenId(src)
     if not cid then return false, 'Player data is unavailable.' end
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_recovery` WHERE `citizenid`=? AND `status`=? ORDER BY `created_at` LIMIT 200', { cid, 'pending' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_recovery` WHERE `citizenid`=? AND `status`=? ORDER BY `created_at` LIMIT 200', { cid, 'pending' })
     if not rows then return false, err end
-    local garages = QB.sql.query([[SELECT DISTINCT p.id,p.definition FROM qbhousing_properties p LEFT JOIN qbhousing_garage_recovery g ON g.property_id=p.id AND g.citizenid=? LEFT JOIN qbhousing_leases l ON l.property_id=p.id AND l.tenant=? AND l.status IN ('ended','evicted') WHERE g.citizenid IS NOT NULL OR l.tenant IS NOT NULL]], { cid, cid }) or {}
+    local garages = Kora.sql.query([[SELECT DISTINCT p.id,p.definition FROM qbhousing_properties p LEFT JOIN qbhousing_garage_recovery g ON g.property_id=p.id AND g.citizenid=? LEFT JOIN qbhousing_leases l ON l.property_id=p.id AND l.tenant=? AND l.status IN ('ended','evicted') WHERE g.citizenid IS NOT NULL OR l.tenant IS NOT NULL]], { cid, cid }) or {}
     for _, row in ipairs(garages) do
         local property = State.get(row.id)
         if property and property.garage then rows[#rows + 1] = { id = 'garage:' .. row.id, property_id = row.id, label = property.label, kind = 'garage' } end
@@ -213,15 +213,15 @@ end
 function S.claimRecovery(src, id)
     local cid = P.citizenId(src)
     if not cid then return false, 'Player data is unavailable.' end
-    local row = QB.sql.single('SELECT * FROM `qbhousing_recovery` WHERE `id`=? AND `citizenid`=?', { id, cid })
+    local row = Kora.sql.single('SELECT * FROM `qbhousing_recovery` WHERE `id`=? AND `citizenid`=?', { id, cid })
     if not row then return false, 'Recovery record was not found.' end
     return D.lock(row.property_id, function()
         if P.citizenId(src) ~= cid then return false, 'Your character changed. Try again.' end
-        row = QB.sql.single('SELECT * FROM `qbhousing_recovery` WHERE `id`=? AND `citizenid`=?', { id, cid })
+        row = Kora.sql.single('SELECT * FROM `qbhousing_recovery` WHERE `id`=? AND `citizenid`=?', { id, cid })
         if not row or row.kind ~= 'stash' then return false, 'Recovery record was not found.' end
         if row.status == 'claimed' then return true, true end
         if row.status ~= 'pending' then return false, 'Recovery storage is not ready.' end
-        local stash = QB.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { row.reference })
+        local stash = Kora.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=?', { row.reference })
         if not stash or stash.status ~= 'recovery' or stash.property_id ~= row.property_id or stash.lease_id ~= row.lease_id
             or stash.lease_id and stash.tenant ~= cid then return false, 'Recovery storage is not ready.' end
         local ready, err = register(stash)
@@ -242,13 +242,13 @@ function S.registerGarage(id)
     if not property or not property.garage then return true end
     -- Imported resourceId fields may name a public or foreign provider's
     -- garage. Only this property's durable housing mapping is authoritative.
-    local key = QB.sql.scalar('SELECT garage_key FROM `qbhousing_garages` WHERE property_id=?', { id })
+    local key = Kora.sql.scalar('SELECT garage_key FROM `qbhousing_garages` WHERE property_id=?', { id })
     if not key then
         key = D.id()
         if not key then return false, 'Garage storage is unavailable.' end
-        local inserted, err = QB.sql.execute('INSERT IGNORE INTO `qbhousing_garages` (`property_id`,`garage_key`) VALUES (?,?)', { id, key })
+        local inserted, err = Kora.sql.execute('INSERT IGNORE INTO `qbhousing_garages` (`property_id`,`garage_key`) VALUES (?,?)', { id, key })
         if not inserted then return false, err end
-        key = QB.sql.scalar('SELECT garage_key FROM `qbhousing_garages` WHERE property_id=?', { id })
+        key = Kora.sql.scalar('SELECT garage_key FROM `qbhousing_garages` WHERE property_id=?', { id })
     end
     local lease, owners = Housing.leases.active(id), D.owners(property)
     if lease then owners = { lease.tenant } end
@@ -259,8 +259,8 @@ function S.registerGarage(id)
                 if P.can(src, id, 'garage.' .. action) then return true end
                 if action ~= 'retrieve' and action ~= 'list' then return false end
                 local cid = P.citizenId(src)
-                local prior = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=? AND `status` IN (?,?)', { id, cid, 'ended', 'evicted' })
-                local former = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_garage_recovery` WHERE `property_id`=? AND `citizenid`=?', { id, cid })
+                local prior = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=? AND `status` IN (?,?)', { id, cid, 'ended', 'evicted' })
+                local former = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_garage_recovery` WHERE `property_id`=? AND `citizenid`=?', { id, cid })
                 return tonumber(prior or 0) > 0 or tonumber(former or 0) > 0
             end)
     end)
@@ -276,8 +276,8 @@ function S.openGarage(src, id)
     if not D.near(src, property.garage.coords, 8) then return false, 'Go to the property garage.' end
     if not P.can(src, id, 'garage.list') then
         local cid = P.citizenId(src)
-        local recovery = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_garage_recovery` WHERE `property_id`=? AND `citizenid`=?', { id, cid })
-        local prior = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=? AND `status` IN (?,?)', { id, cid, 'ended', 'evicted' })
+        local recovery = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_garage_recovery` WHERE `property_id`=? AND `citizenid`=?', { id, cid })
+        local prior = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=? AND `status` IN (?,?)', { id, cid, 'ended', 'evicted' })
         if tonumber(recovery or 0) == 0 and tonumber(prior or 0) == 0 then return false, 'You cannot use this garage.' end
     end
     return true, { id = key }
@@ -285,11 +285,11 @@ end
 
 function S.view(src, id)
     local cid, lease = P.citizenId(src), Housing.leases.active(id)
-    local rows = QB.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=?', { id, 'active' }) or {}
+    local rows = Kora.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `status`=?', { id, 'active' }) or {}
     local stashes = {}
     for _, row in ipairs(rows) do if lease and row.lease_id == lease.id or not lease and not row.lease_id then stashes[#stashes + 1] = row end end
     local position = stashes[1] and (type(stashes[1].coords) == 'string' and json.decode(stashes[1].coords) or stashes[1].coords) or coords(State.get(id))
-    return { coords = position, tier = tonumber(QB.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { id })) or 1, tiers = Housing.copy(Config.storageTiers), stashes = stashes }
+    return { coords = position, tier = tonumber(Kora.sql.scalar('SELECT COALESCE(MAX(`tier`),1) FROM `qbhousing_storage_purchases` WHERE `property_id`=?', { id })) or 1, tiers = Housing.copy(Config.storageTiers), stashes = stashes }
 end
 
 function S.load()
@@ -305,7 +305,7 @@ AddEventHandler('qbgarages:ready', function() if State.ready then S.load() end e
 
 function S.archive(id)
     local property = State.get(id)
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL AND `status`=?', { id, 'active' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_stashes` WHERE `property_id`=? AND `lease_id` IS NULL AND `status`=?', { id, 'active' })
     if not rows then return false, err end
     if #rows > 0 and not property.owner then
         for _, row in ipairs(rows) do
@@ -315,7 +315,7 @@ function S.archive(id)
     end
     for _, row in ipairs(rows) do
         if property.owner then
-            local writes = { { query = 'UPDATE `qbhousing_stashes` SET `status`=?,`tenant`=? WHERE `id`=? AND `status`=?', values = { 'recovery', QB.sql.NULL, row.id, 'active' }, expectedRows = 1 } }
+            local writes = { { query = 'UPDATE `qbhousing_stashes` SET `status`=?,`tenant`=? WHERE `id`=? AND `status`=?', values = { 'recovery', Kora.sql.NULL, row.id, 'active' }, expectedRows = 1 } }
             for _, cid in ipairs(D.owners(property)) do
                 local recoveryId = D.id()
                 if not recoveryId then return false, 'Recovery storage is unavailable.' end

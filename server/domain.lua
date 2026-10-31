@@ -2,7 +2,7 @@ Housing.domain = { agents = {} }
 local D = Housing.domain
 
 function D.id()
-    return QB.sql.scalar('SELECT UUID()')
+    return Kora.sql.scalar('SELECT UUID()')
 end
 
 function D.amount(value, allowZero)
@@ -45,11 +45,11 @@ end
 
 function D.audit(propertyId, actor, action, context, outcome)
     return { query = 'INSERT INTO `qbhousing_audit` (`property_id`,`actor`,`action`,`outcome`,`context`) VALUES (?,?,?,?,?)',
-        values = { propertyId, actor or QB.sql.NULL, action, outcome or 'success', json.encode(context or {}) } }
+        values = { propertyId, actor or Kora.sql.NULL, action, outcome or 'success', json.encode(context or {}) } }
 end
 
 function D.sql(statements)
-    local result = QB.sql.transactionChecked(statements)
+    local result = Kora.sql.transactionChecked(statements)
     if not result or not result.success then return false, result and (result.message or result.error) or 'Property storage is unavailable.' end
     return true
 end
@@ -64,7 +64,7 @@ function D.agent(propertyId, cid)
 end
 
 function D.load()
-    local rows, err = QB.sql.query('SELECT `property_id`,`citizenid` FROM `qbhousing_agents`')
+    local rows, err = Kora.sql.query('SELECT `property_id`,`citizenid` FROM `qbhousing_agents`')
     if not rows then return false, err end
     D.agents = {}
     for _, row in ipairs(rows) do

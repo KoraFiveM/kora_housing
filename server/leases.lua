@@ -14,7 +14,7 @@ local function decode(row)
     return row
 end
 
-local function get(id) return decode(QB.sql.single('SELECT * FROM `qbhousing_leases` WHERE `id`=?', { id })) end
+local function get(id) return decode(Kora.sql.single('SELECT * FROM `qbhousing_leases` WHERE `id`=?', { id })) end
 
 function L.active(id) return L.current[id] end
 
@@ -48,14 +48,14 @@ function L.permission(src, property, action, cid)
 end
 
 function L.load()
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_leases` WHERE `status` IN (?,?,?)', { 'active', 'ending', 'evicting' })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_leases` WHERE `status` IN (?,?,?)', { 'active', 'ending', 'evicting' })
     if not rows then return false, err end
     L.current, L.deposits = {}, {}
     for _, row in ipairs(rows) do
         local lease = decode(row); lease.access = {}
         L.current[row.property_id] = lease; revisions[row.id] = row.revision
     end
-    local grants, grantErr = QB.sql.query([[SELECT a.* FROM `qbhousing_lease_access` a JOIN `qbhousing_leases` l ON l.id=a.lease_id WHERE l.status IN ('active','ending','evicting')]])
+    local grants, grantErr = Kora.sql.query([[SELECT a.* FROM `qbhousing_lease_access` a JOIN `qbhousing_leases` l ON l.id=a.lease_id WHERE l.status IN ('active','ending','evicting')]])
     if not grants then return false, grantErr end
     for _, row in ipairs(grants) do
         for _, lease in pairs(L.current) do
@@ -65,7 +65,7 @@ function L.load()
             end
         end
     end
-    local deposits, depositErr = QB.sql.query("SELECT * FROM `qbhousing_leases` WHERE `status` IN ('ended','evicted') AND `deposit_remaining`>0")
+    local deposits, depositErr = Kora.sql.query("SELECT * FROM `qbhousing_leases` WHERE `status` IN ('ended','evicted') AND `deposit_remaining`>0")
     if not deposits then return false, depositErr end
     for _, row in ipairs(deposits) do L.deposits[row.id] = decode(row); revisions[row.id] = row.revision end
     L.schedule()
@@ -73,7 +73,7 @@ function L.load()
 end
 
 function L.reconcileProperty(id)
-    local result, err = QB.sql.transactionChecked({
+    local result, err = Kora.sql.transactionChecked({
         { query = 'SELECT * FROM `qbhousing_leases` WHERE `property_id`=? FOR UPDATE', values = { id } },
         { query = 'SELECT a.* FROM `qbhousing_lease_access` a JOIN `qbhousing_leases` l ON l.id=a.lease_id WHERE l.property_id=?', values = { id } },
     })
@@ -109,9 +109,9 @@ function L.proposeLease(src, id, payload, revision)
         local exists, err = D.character(payload.tenant)
         if not exists then return false, err end
         if D.owner(property, payload.tenant) then return false, 'An owner cannot also be the tenant.' end
-        local listing, listingErr = QB.sql.single('SELECT `id` FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=?', { id, 'active' })
+        local listing, listingErr = Kora.sql.single('SELECT `id` FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=?', { id, 'active' })
         if listingErr or listing then return false, 'Cancel the property listing before renting it.' end
-        local occupied, leaseErr = QB.sql.single([[SELECT `id` FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN ('proposed','active','ending','evicting') OR `deposit_remaining`>0) LIMIT 1]], { id })
+        local occupied, leaseErr = Kora.sql.single([[SELECT `id` FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN ('proposed','active','ending','evicting') OR `deposit_remaining`>0) LIMIT 1]], { id })
         if leaseErr or occupied then return false, 'Finish the existing lease and its deposit before creating another.' end
         for _, child in pairs(State.properties) do if child.parentId == id then return false, 'Rent the individual units of this building.' end end
         local permissions = Housing.copy(Config.tenantPermissions)
@@ -266,7 +266,7 @@ function L.finish(leaseId)
         changed.status, changed.revision = lease.status == 'evicting' and 'evicted' or 'ended', lease.revision + 1
         changed.deposit_release_at = lease.deposit_remaining > 0 and os.time() + lease.deposit_review_seconds or nil
         local saved, saveErr = State.persist(Housing.copy(property), { actor = lease.tenant, action = 'lease.' .. changed.status }, {
-            { query = 'UPDATE `qbhousing_leases` SET `status`=?,`revision`=?,`deposit_release_at`=? WHERE `id`=? AND `revision`=? AND `status`=?', values = { changed.status, changed.revision, changed.deposit_release_at or QB.sql.NULL, lease.id, lease.revision, lease.status }, expectedRows = 1 },
+            { query = 'UPDATE `qbhousing_leases` SET `status`=?,`revision`=?,`deposit_release_at`=? WHERE `id`=? AND `revision`=? AND `status`=?', values = { changed.status, changed.revision, changed.deposit_release_at or Kora.sql.NULL, lease.id, lease.revision, lease.status }, expectedRows = 1 },
             { query = 'UPDATE `qbhousing_evictions` SET `status`=? WHERE `lease_id`=?', values = { 'completed', lease.id } },
         })
         if not saved then return false, saveErr end
@@ -285,7 +285,7 @@ function L.proposeDeduction(src, leaseId, payload)
         local property, cid = State.get(lease.property_id), P.citizenId(src)
         if not D.owner(property, cid) or lease.status ~= 'ended' and lease.status ~= 'evicted' or lease.deposit_remaining < 1 or not lease.deposit_release_at or lease.deposit_release_at <= os.time() or type(payload) ~= 'table' then return false, 'There is no refundable deposit to deduct from.' end
         if payload.category ~= 'damage' and payload.category ~= 'unpaid_rent' or not D.amount(payload.amount) or type(payload.note) ~= 'string' or #payload.note < 1 or #payload.note > 2000 then return false, 'Provide a valid category, amount and evidence note.' end
-        local reserved, reservedErr = QB.sql.scalar('SELECT COALESCE(SUM(`amount`),0) FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? AND `status` IN (?,?,?)', { lease.id, 'proposed', 'disputed', 'approved' })
+        local reserved, reservedErr = Kora.sql.scalar('SELECT COALESCE(SUM(`amount`),0) FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? AND `status` IN (?,?,?)', { lease.id, 'proposed', 'disputed', 'approved' })
         if reserved == nil or payload.amount > lease.deposit_remaining - tonumber(reserved) then return false, reservedErr or 'Deductions exceed the remaining deposit.' end
         local id = D.id()
         if not id then return false, 'Deposit storage is unavailable.' end
@@ -295,12 +295,12 @@ function L.proposeDeduction(src, leaseId, payload)
 end
 
 function L.decideDeduction(src, id, decision, amount, note)
-    local row = QB.sql.single('SELECT * FROM `qbhousing_deposit_deductions` WHERE `id`=?', { id })
+    local row = Kora.sql.single('SELECT * FROM `qbhousing_deposit_deductions` WHERE `id`=?', { id })
     if not row then return false, 'Deduction was not found.' end
     local lease = get(row.lease_id)
     if not lease then return false, 'Lease was not found.' end
     local ok, result = D.lock(lease.property_id, function()
-        row = QB.sql.single('SELECT * FROM `qbhousing_deposit_deductions` WHERE `id`=?', { id })
+        row = Kora.sql.single('SELECT * FROM `qbhousing_deposit_deductions` WHERE `id`=?', { id })
         lease = get(lease.id)
         if not row or not lease or row.lease_id ~= lease.id or row.status ~= 'proposed' and row.status ~= 'disputed' and row.status ~= 'approved' then return false, 'This deduction is already settled or unavailable.' end
         if decision == 'resolve' then
@@ -310,7 +310,7 @@ function L.decideDeduction(src, id, decision, amount, note)
             amount = decision == 'accept' and row.amount or nil
         end
         local status = decision == 'dispute' and 'disputed' or 'approved'
-        local saved, err = D.sql({ { query = 'UPDATE `qbhousing_deposit_deductions` SET `status`=?,`approved_amount`=?,`decision_note`=? WHERE `id`=? AND `status`=?', values = { status, amount or QB.sql.NULL, note or QB.sql.NULL, id, row.status }, expectedRows = 1 }, D.audit(lease.property_id, P.citizenId(src), 'deposit.' .. decision, { deduction = id, amount = amount }) })
+        local saved, err = D.sql({ { query = 'UPDATE `qbhousing_deposit_deductions` SET `status`=?,`approved_amount`=?,`decision_note`=? WHERE `id`=? AND `status`=?', values = { status, amount or Kora.sql.NULL, note or Kora.sql.NULL, id, row.status }, expectedRows = 1 }, D.audit(lease.property_id, P.citizenId(src), 'deposit.' .. decision, { deduction = id, amount = amount }) })
         return saved, saved and true or err
     end)
     if ok then L.settleDeposit(lease.id) end
@@ -329,7 +329,7 @@ function L.settleDeposit(leaseId)
         if lease.status ~= 'ended' and lease.status ~= 'evicted' or lease.deposit_remaining < 1 then L.publish(lease); return true end
         local property = State.get(lease.property_id)
         if not property then return false, 'Property was not found.' end
-        local rows, err = QB.sql.query('SELECT * FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? AND `status` IN (?,?,?) ORDER BY `created_at`', { leaseId, 'proposed', 'disputed', 'approved' })
+        local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? AND `status` IN (?,?,?) ORDER BY `created_at`', { leaseId, 'proposed', 'disputed', 'approved' })
         if not rows then return false, err end
         local writes, credits, payout, held = {}, {}, 0, 0
         for _, row in ipairs(rows) do
@@ -354,7 +354,7 @@ function L.settleDeposit(leaseId)
         local changed = Housing.copy(lease)
         changed.deposit_remaining, changed.revision = lease.deposit_remaining - payout - refund, lease.revision + 1
         if lease.deposit_release_at and lease.deposit_release_at <= os.time() then changed.deposit_release_at = nil end
-        writes[#writes + 1] = { query = 'UPDATE `qbhousing_leases` SET `deposit_remaining`=?,`revision`=?,`deposit_release_at`=? WHERE `id`=? AND `revision`=?', values = { changed.deposit_remaining, changed.revision, changed.deposit_release_at or QB.sql.NULL, leaseId, lease.revision }, expectedRows = 1 }
+        writes[#writes + 1] = { query = 'UPDATE `qbhousing_leases` SET `deposit_remaining`=?,`revision`=?,`deposit_release_at`=? WHERE `id`=? AND `revision`=?', values = { changed.deposit_remaining, changed.revision, changed.deposit_release_at or Kora.sql.NULL, leaseId, lease.revision }, expectedRows = 1 }
         if payout + refund == 0 then
             local saved, saveErr = State.persist(Housing.copy(property), { actor = lease.tenant, action = 'deposit.review' }, writes)
             if not saved then return false, saveErr end
@@ -376,7 +376,7 @@ end
 
 function L.schedule()
     if processing then return end
-    if timer then QB.timers.clearTimeout(timer); timer = nil end
+    if timer then Kora.timers.clearTimeout(timer); timer = nil end
     if not State.ready then return end
     local nextAt
     for _, collection in ipairs({ L.current, L.deposits }) do
@@ -389,7 +389,7 @@ function L.schedule()
         end
     end
     if not nextAt then return end
-    timer = QB.timers.setTimeout(function()
+    timer = Kora.timers.setTimeout(function()
         timer, processing = nil, true
         local due = {}
         for _, collection in ipairs({ L.current, L.deposits }) do
@@ -419,15 +419,15 @@ function L.view(src, id)
     local manage = D.owner(property, cid) or P.isAdmin(src)
     local sql, params = 'SELECT * FROM `qbhousing_leases` WHERE `property_id`=?', { id }
     if not manage then sql = sql .. ' AND `tenant`=?'; params[#params + 1] = cid end
-    local history = QB.sql.query(sql .. ' ORDER BY `created_at` DESC LIMIT 100', params) or {}
+    local history = Kora.sql.query(sql .. ' ORDER BY `created_at` DESC LIMIT 100', params) or {}
     local result = { active = Housing.copy(L.current[id]), history = history, payments = {}, deductions = {} }
     if not manage and (not result.active or result.active.tenant ~= cid) then result.active = nil end
     for _, lease in ipairs(history) do
         lease.permissions = type(lease.permissions) == 'string' and json.decode(lease.permissions) or lease.permissions
-        for _, row in ipairs(QB.sql.query('SELECT * FROM `qbhousing_rent_periods` WHERE `lease_id`=? ORDER BY `period_start` DESC LIMIT 100', { lease.id }) or {}) do result.payments[#result.payments + 1] = row end
-        for _, row in ipairs(QB.sql.query('SELECT * FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? ORDER BY `created_at` DESC LIMIT 100', { lease.id }) or {}) do result.deductions[#result.deductions + 1] = row end
+        for _, row in ipairs(Kora.sql.query('SELECT * FROM `qbhousing_rent_periods` WHERE `lease_id`=? ORDER BY `period_start` DESC LIMIT 100', { lease.id }) or {}) do result.payments[#result.payments + 1] = row end
+        for _, row in ipairs(Kora.sql.query('SELECT * FROM `qbhousing_deposit_deductions` WHERE `lease_id`=? ORDER BY `created_at` DESC LIMIT 100', { lease.id }) or {}) do result.deductions[#result.deductions + 1] = row end
     end
     return result
 end
 
-AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() and timer then QB.timers.clearTimeout(timer) end end)
+AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() and timer then Kora.timers.clearTimeout(timer) end end)

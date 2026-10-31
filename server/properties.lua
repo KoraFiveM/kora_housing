@@ -124,14 +124,14 @@ function Properties.view(src, id, details)
     local canManage = permission.actions['property.edit'] or permission.actions['permissions.manage'] or permission.actions['sales.manage'] or Permissions.isAdmin(src)
     local involved = lease and lease.tenant == cid
     if Housing.sales and not canManage and not permission.actions.entry and not involved then
-        local count = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE l.property_id=? AND o.buyer=?', { id, cid })
+        local count = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE l.property_id=? AND o.buyer=?', { id, cid })
         involved = tonumber(count or 0) > 0
         if not involved then
-            local agreements = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=?', { id, cid })
+            local agreements = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND `tenant`=?', { id, cid })
             involved = tonumber(agreements or 0) > 0
         end
         if not involved and details ~= false then
-            local browse = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=? AND (`channel`=? OR `buyer`=?)', { id, 'active', 'public', cid })
+            local browse = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_listings` WHERE `property_id`=? AND `status`=? AND (`channel`=? OR `buyer`=?)', { id, 'active', 'public', cid })
             involved = tonumber(browse or 0) > 0
         end
     end
@@ -162,11 +162,11 @@ function Properties.snapshot(src)
     table.sort(result.properties, function(a, b) return a.id < b.id end)
     if Housing.sales then
         local cid = result.citizenid
-        local offers = QB.sql.query('SELECT o.*,l.property_id,l.channel,l.agent,l.commission_policy FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE o.buyer=? OR l.agent=? OR l.seller=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=l.property_id AND c.citizenid=?) ORDER BY o.created_at DESC LIMIT 200', { cid, cid, cid, cid }) or {}
+        local offers = Kora.sql.query('SELECT o.*,l.property_id,l.channel,l.agent,l.commission_policy FROM `qbhousing_offers` o JOIN `qbhousing_listings` l ON l.id=o.listing_id WHERE o.buyer=? OR l.agent=? OR l.seller=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=l.property_id AND c.citizenid=?) ORDER BY o.created_at DESC LIMIT 200', { cid, cid, cid, cid }) or {}
         for _, offer in ipairs(offers) do local property = State.get(offer.property_id); if property then offer.settlementSummary = Housing.sales.summary(property, { channel = offer.channel, commission_policy = offer.commission_policy }, offer.amount) end end
-        local leases = QB.sql.query('SELECT l.* FROM `qbhousing_leases` l WHERE (l.tenant=? OR l.landlord=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=l.property_id AND c.citizenid=?)) AND (l.status IN (?,?,?,?) OR l.deposit_remaining>0) ORDER BY l.created_at DESC LIMIT 100', { cid, cid, cid, 'proposed', 'active', 'ending', 'evicting' }) or {}
+        local leases = Kora.sql.query('SELECT l.* FROM `qbhousing_leases` l WHERE (l.tenant=? OR l.landlord=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=l.property_id AND c.citizenid=?)) AND (l.status IN (?,?,?,?) OR l.deposit_remaining>0) ORDER BY l.created_at DESC LIMIT 100', { cid, cid, cid, 'proposed', 'active', 'ending', 'evicting' }) or {}
         for _, lease in ipairs(leases) do if type(lease.permissions) == 'string' then lease.permissions = json.decode(lease.permissions) end end
-        local operations = QB.sql.query('SELECT t.id,t.property_id,t.kind,t.status,t.error,t.created_at,t.updated_at FROM `qbhousing_transactions` t JOIN `qbhousing_properties` p ON p.id=t.property_id WHERE t.actor=? OR p.owner=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=p.id AND c.citizenid=?) ORDER BY t.created_at DESC LIMIT 100', { cid, cid, cid }) or {}
+        local operations = Kora.sql.query('SELECT t.id,t.property_id,t.kind,t.status,t.error,t.created_at,t.updated_at FROM `qbhousing_transactions` t JOIN `qbhousing_properties` p ON p.id=t.property_id WHERE t.actor=? OR p.owner=? OR EXISTS (SELECT 1 FROM `qbhousing_coowners` c WHERE c.property_id=p.id AND c.citizenid=?) ORDER BY t.created_at DESC LIMIT 100', { cid, cid, cid }) or {}
         local ok, recovery = Housing.storage.recoveryList(src)
         result.inbox = { offers = offers, leases = leases, transactions = operations, recoveries = ok and recovery or {} }
     end

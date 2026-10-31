@@ -16,7 +16,7 @@ local function setup()
         getPlayerByCitizenId = function(_, cid) return f.characters[cid] end,
         getOfflinePlayerData = function(_, cid) return f.characters[cid] end,
     } }, { __call = function(_, name, fn) f.provided[name] = fn end })
-    env.QB = { sql = { query = function()
+    env.Kora = { sql = { query = function()
         if f.duringRead then f.duringRead() end
         if f.failSQL then return nil, 'storage unavailable' end
         if f.throwSQL then error('driver stopped') end

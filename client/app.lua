@@ -9,13 +9,13 @@ local session = 0
 local refreshing, refreshPending = false, false
 local buildNavigation
 
-local function text(key) return QB.lang('app.' .. key) end
+local function text(key) return Kora.lang('app.' .. key) end
 local function money(value) return ('$%.0f'):format(tonumber(value) or 0) end
 local function notice(message, tone) return { notice = { message = message, tone = tone or 'success' } } end
 local function failure(message) return notice(message or text('unavailable'), 'destructive') end
 
 local function request(name, ...)
-    local ok, result = QB.callback.trigger('qbhousing:' .. name, ...)
+    local ok, result = Kora.callback.trigger('qbhousing:' .. name, ...)
     if ok ~= true then return nil, result or text('unavailable') end
     return result
 end
@@ -253,7 +253,7 @@ local function refreshData()
     local started = session
     local data, err = request('creatorSnapshot')
     if not data then return nil, err end
-    local listings = QB.callback.trigger('qbhousing:catalog')
+    local listings = Kora.callback.trigger('qbhousing:catalog')
     if session ~= started then return nil, text('unavailable') end
     snapshot = data
     catalog = type(listings) == 'table' and listings or {}
@@ -277,7 +277,7 @@ local function captureBoundary(property)
     local started = session
     CreateThread(function()
         local existing = draft.exterior and { points = draft.exterior.polyzone, minZ = draft.exterior.minZ, maxZ = draft.exterior.maxZ, thickness = draft.exterior.thickness } or nil
-        local captured = QB.zones.startCreator('poly', existing)
+        local captured = Kora.zones.startCreator('poly', existing)
         if session ~= started then return end
         if captured and captured.opts then
             local options = captured.opts
@@ -292,7 +292,7 @@ local function captureBoundary(property)
         end
         local ok, err = refreshData()
         if session ~= started then return end
-        if not ok then return QB.notify.send({ title = text('title'), message = err, type = 'error' }) end
+        if not ok then return Kora.notify.send({ title = text('title'), message = err, type = 'error' }) end
         local viewId, tabId = 'new', nil
         if property then
             selected = request('propertyView', property.id)
@@ -301,8 +301,8 @@ local function captureBoundary(property)
         elseif not snapshot.admin and not snapshot.realtor then
             viewId = 'properties'
         end
-        QB.nui.updateApp(APP_ID, { navigation = buildNavigation() })
-        QB.nui.openApp(APP_ID, { viewId = viewId, tabId = tabId })
+        Kora.nui.updateApp(APP_ID, { navigation = buildNavigation() })
+        Kora.nui.openApp(APP_ID, { viewId = viewId, tabId = tabId })
     end)
 end
 
@@ -321,7 +321,7 @@ local function onAction(action, context)
     if action == 'property:open' then return selectedResult(context.itemId) end
     if action == 'configuration:reload' and selected then return selectedResult(selected.property.id, 'configuration', nil, true) end
     if action == 'market:offer' then
-        local ok, err = QB.callback.trigger('qbhousing:offer', context.itemId, snapshot.citizenid)
+        local ok, err = Kora.callback.trigger('qbhousing:offer', context.itemId, snapshot.citizenid)
         return ok and notice(text('offer_sent')) or failure(err)
     end
     if Housing.gameplay then
@@ -381,9 +381,9 @@ function Housing.app.open(viewId)
     CreateThread(function()
         local ok, err = refreshData()
         if session ~= started then return end
-        if not ok then return QB.notify.send({ title = text('title'), message = err, type = 'error' }) end
+        if not ok then return Kora.notify.send({ title = text('title'), message = err, type = 'error' }) end
         selected, drafts = nil, {}
-        QB.nui.registerApp({
+        Kora.nui.registerApp({
             id = APP_ID, title = text('title'), icon = 'House', width = 1180, height = 780,
             defaultView = 'properties', navigation = buildNavigation(), onAction = onAction,
             onChange = function(action, context)
@@ -394,12 +394,12 @@ function Housing.app.open(viewId)
                 return { navigation = buildNavigation() }
             end,
         })
-        QB.nui.openApp(APP_ID, { viewId = viewId or 'properties' })
+        Kora.nui.openApp(APP_ID, { viewId = viewId or 'properties' })
     end)
 end
 
 function Housing.app.sync()
-    if not QB.nui.isAppOpen(APP_ID) then return end
+    if not Kora.nui.isAppOpen(APP_ID) then return end
     refreshPending = true
     if refreshing then return end
     refreshing = true
@@ -409,10 +409,10 @@ function Housing.app.sync()
             refreshPending = false
             local id = selected and selected.property.id
             local ok, err = refreshData()
-            if session ~= started or not QB.nui.isAppOpen(APP_ID) then break end
+            if session ~= started or not Kora.nui.isAppOpen(APP_ID) then break end
             if not ok then
-                QB.nui.closeApp(APP_ID)
-                QB.notify.send({ title = text('title'), message = err, type = 'error' })
+                Kora.nui.closeApp(APP_ID)
+                Kora.notify.send({ title = text('title'), message = err, type = 'error' })
                 break
             end
             if id and selected and selected.property.id == id then
@@ -428,7 +428,7 @@ function Housing.app.sync()
                     selected = nil
                 end
             end
-            QB.nui.updateApp(APP_ID, { navigation = buildNavigation() })
+            Kora.nui.updateApp(APP_ID, { navigation = buildNavigation() })
         until not refreshPending
         refreshing = false
     end)
@@ -438,12 +438,12 @@ function Housing.app.close()
     session = session + 1
     refreshPending = false
     selected, snapshot, catalog, drafts = nil, {}, {}, {}
-    QB.nui.closeApp(APP_ID)
+    Kora.nui.closeApp(APP_ID)
 end
 
 function Housing.app.refreshProperty(id, tab)
     local response = selectedResult(id, tab)
-    if response.update then QB.nui.updateApp(APP_ID, response.update) end
-    if response.navigate then QB.nui.openApp(APP_ID, response.navigate) end
-    if response.notice then QB.notify.send({ title = text('title'), message = response.notice.message, type = response.notice.tone == 'destructive' and 'error' or 'success' }) end
+    if response.update then Kora.nui.updateApp(APP_ID, response.update) end
+    if response.navigate then Kora.nui.openApp(APP_ID, response.navigate) end
+    if response.notice then Kora.notify.send({ title = text('title'), message = response.notice.message, type = response.notice.tone == 'destructive' and 'error' or 'success' }) end
 end

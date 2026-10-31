@@ -11,7 +11,7 @@ local function inspect(id)
     for _, child in pairs(State.properties) do
         if child.parentId == id and child.state ~= 'archived' then return nil, 'Archive or move this building\'s units first.' end
     end
-    local leases, err = QB.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN (?,?,?,?) OR `deposit_remaining`>0)', { id, 'proposed', 'active', 'ending', 'evicting' })
+    local leases, err = Kora.sql.scalar('SELECT COUNT(*) FROM `qbhousing_leases` WHERE `property_id`=? AND (`status` IN (?,?,?,?) OR `deposit_remaining`>0)', { id, 'proposed', 'active', 'ending', 'evicting' })
     if leases == nil or tonumber(leases) > 0 then return nil, err or 'Resolve active leases and outstanding deposits first.' end
     if Housing.storage.canArchive then
         local ready, storageErr = Housing.storage.canArchive(id)
@@ -62,7 +62,7 @@ function A.resume()
             if not ok then pending = true; print(('[qbhousing] archival recovery deferred for %s: %s'):format(id, tostring(err))) end
         end
     end
-    if pending then timer = QB.timers.setTimeout(A.resume, 30000) end
+    if pending then timer = Kora.timers.setTimeout(A.resume, 30000) end
 end
 
 function A.archive(src, id, token)
@@ -91,7 +91,7 @@ function A.archive(src, id, token)
     if not ok then return false, err end
     State.broadcast()
     local completed, result = A.finish(id)
-    if not completed and not timer then timer = QB.timers.setTimeout(A.resume, 30000) end
+    if not completed and not timer then timer = Kora.timers.setTimeout(A.resume, 30000) end
     if not completed then return true, { status = 'archiving', message = 'Archival is safely queued and will resume automatically.' } end
     return true, result
 end
@@ -99,9 +99,9 @@ end
 function A.audit(src, id)
     if not P.isAdmin(src) then return false, 'Only administrators can inspect the audit log.' end
     if not State.get(id) then return false, 'Property was not found.' end
-    local rows, err = QB.sql.query('SELECT * FROM `qbhousing_audit` WHERE `property_id`=? ORDER BY `id` DESC LIMIT 200', { id })
+    local rows, err = Kora.sql.query('SELECT * FROM `qbhousing_audit` WHERE `property_id`=? ORDER BY `id` DESC LIMIT 200', { id })
     return rows ~= nil, rows or err
 end
 
 AddEventHandler('playerDropped', function() confirmations[source] = nil end)
-AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() and timer then QB.timers.clearTimeout(timer) end end)
+AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() and timer then Kora.timers.clearTimeout(timer) end end)

@@ -5,9 +5,9 @@ local visit, viewing
 local lifecycle = 0
 local cameraBindings = {}
 
-local function notify(message, kind) QB.notify.send({ title = 'Housing', message = message, type = kind or 'info' }) end
+local function notify(message, kind) Kora.notify.send({ title = 'Housing', message = message, type = kind or 'info' }) end
 local function request(name, ...)
-    local ok, result = QB.callback.trigger('qbhousing:' .. name, ...)
+    local ok, result = Kora.callback.trigger('qbhousing:' .. name, ...)
     if ok ~= true then return nil, result or 'Housing is unavailable.' end
     return result
 end
@@ -20,7 +20,7 @@ local function deleteShell(objects)
 end
 
 local function deleteObject(entity)
-    pcall(QB.entities.remove, entity)
+    pcall(Kora.entities.remove, entity)
     if DoesEntityExist(entity) then DeleteEntity(entity) end
 end
 
@@ -62,15 +62,15 @@ local function rebuild(record)
         end
         for id, entity in pairs(record.entities) do
             if not wanted[id] or record.revisions[id] ~= wanted[id].revision then
-                QB.entities.remove(entity); record.entities[id], record.revisions[id] = nil, nil
+                Kora.entities.remove(entity); record.entities[id], record.revisions[id] = nil, nil
             end
         end
         for id, item in pairs(wanted) do
             if not current() then return end
             if not record.entities[id] then
-                local entity, err = QB.entities.create(item.model, item.coords, { preset = 'static' })
+                local entity, err = Kora.entities.create(item.model, item.coords, { preset = 'static' })
                 if entity then
-                    if not current() then QB.entities.remove(entity); return end
+                    if not current() then Kora.entities.remove(entity); return end
                     SetEntityRotation(entity, item.rotation.pitch, item.rotation.roll, item.rotation.yaw, 2, true)
                     record.entities[id], record.revisions[id] = entity, item.revision
                 else notify(err or 'A property object could not be streamed.', 'error') end
@@ -102,7 +102,7 @@ function Scene.syncSpaces(definitions)
             local started = lifecycle
             local registration = { revision = definition.revision, inside = false }
             zones[id] = registration
-            local zone = QB.zones.sphere({ coords = definition.center, radius = definition.radius,
+            local zone = Kora.zones.sphere({ coords = definition.center, radius = definition.radius,
                 onEnter = function()
                     registration.inside = true
                     CreateThread(function()
@@ -127,7 +127,7 @@ function Scene.leave(tellServer)
     visit = nil
     Scene.stopCamera(tellServer)
     if not previous then return end
-    pcall(QB.interact.removeZone, 'qbhousing:world-exit')
+    pcall(Kora.interact.removeZone, 'qbhousing:world-exit')
     local entrance = previous.entrance
     if entrance then SetEntityCoords(PlayerPedId(), entrance.x, entrance.y, entrance.z, false, false, false, false); SetEntityHeading(PlayerPedId(), entrance.w or 0) end
     release(previous.propertyId, 'inside')
@@ -142,7 +142,7 @@ function Scene.enter(scene, entrance)
     visit = { propertyId = scene.propertyId, entrance = entrance }
     CreateThread(function()
         if scene.interior and scene.interior.type == 'shell' then
-            local ready, err = QB.loops.controlled(function() return lifecycle ~= started or #record.shell > 0 end, 25, 10000)
+            local ready, err = Kora.loops.controlled(function() return lifecycle ~= started or #record.shell > 0 end, 25, 10000)
             if lifecycle ~= started or not visit or visit.propertyId ~= scene.propertyId then return end
             if not ready then notify(err or 'The interior could not be loaded.', 'error'); Scene.leave(); return end
             local origin, exit = scene.space.origin, scene.interior.exit
@@ -160,7 +160,7 @@ function Scene.enter(scene, entrance)
             local origin = scene.space.origin
             coords = { x = origin.x + exit.x, y = origin.y + exit.y, z = origin.z + exit.z }
         elseif exit then coords = exit end
-        QB.interact.addBoxZone('qbhousing:world-exit', coords, { x = 2, y = 2, z = 2.5 }, { options = {
+        Kora.interact.addBoxZone('qbhousing:world-exit', coords, { x = 2, y = 2, z = 2.5 }, { options = {
             { label = 'Leave property', action = function() CreateThread(function() Scene.leave() end) end },
         } })
     end)
@@ -171,7 +171,7 @@ function Scene.stopCamera(tellServer)
     viewing = nil
     if not previous then return end
     if previous.instructions then pcall(previous.instructions.hide) end
-    if previous.controls then pcall(QB.controls.release, previous.controls) end
+    if previous.controls then pcall(Kora.controls.release, previous.controls) end
     RenderScriptCams(false, false, 0, true, true)
     if DoesCamExist(previous.cam) then DestroyCam(previous.cam, false) end
     if DoesEntityExist(previous.ped) then FreezeEntityPosition(previous.ped, previous.wasFrozen) end
@@ -181,7 +181,7 @@ end
 
 function Scene.viewCamera(data)
     Scene.stopCamera()
-    if QB.freecam.isActive() or QB.placement.isActive() then notify('Finish the active editor before viewing a camera.', 'error'); TriggerServerEvent('qbhousing:server:closeCamera', data.token); return end
+    if Kora.freecam.isActive() or Kora.placement.isActive() then notify('Finish the active editor before viewing a camera.', 'error'); TriggerServerEvent('qbhousing:server:closeCamera', data.token); return end
     Scene.retain(data.scene, 'camera')
     local camera = data.camera
     local ped = PlayerPedId()
@@ -191,11 +191,11 @@ function Scene.viewCamera(data)
         camera.rotation.pitch, camera.rotation.roll, camera.rotation.yaw, camera.fov, false, 2)
     if not state.cam or not DoesCamExist(state.cam) then release(camera.propertyId, 'camera'); TriggerServerEvent('qbhousing:server:closeCamera', data.token); return notify('The camera view could not be created.', 'error') end
     viewing = state
-    state.controls = QB.controls.acquire({ 1, 2, 30, 31, 24, 25, 37, 75, 200, 202 }, { disablePlayerFiring = true })
+    state.controls = Kora.controls.acquire({ 1, 2, 30, 31, 24, 25, 37, 75, 200, 202 }, { disablePlayerFiring = true })
     FreezeEntityPosition(ped, true)
     SetCamActive(state.cam, true)
     RenderScriptCams(true, false, 0, true, true)
-    state.instructions = QB.instructional.show({
+    state.instructions = Kora.instructional.show({
         { keybind = cameraBindings.exit, label = 'Close camera' }, { keybind = cameraBindings.next, label = 'Next camera' }, { keybind = cameraBindings.previous, label = 'Previous camera' },
     })
 end
@@ -216,9 +216,9 @@ local function switchCamera(direction)
     end)
 end
 
-cameraBindings.exit = QB.keybind.add({ name = 'qbhousing_camera_exit', description = 'Housing: Close Security Camera', defaultMapper = 'keyboard', defaultKey = 'BACK', onPressed = function() Scene.stopCamera() end })
-cameraBindings.next = QB.keybind.add({ name = 'qbhousing_camera_next', description = 'Housing: Next Security Camera', defaultMapper = 'keyboard', defaultKey = 'RIGHT', onPressed = function() switchCamera(1) end })
-cameraBindings.previous = QB.keybind.add({ name = 'qbhousing_camera_previous', description = 'Housing: Previous Security Camera', defaultMapper = 'keyboard', defaultKey = 'LEFT', onPressed = function() switchCamera(-1) end })
+cameraBindings.exit = Kora.keybind.add({ name = 'qbhousing_camera_exit', description = 'Housing: Close Security Camera', defaultMapper = 'keyboard', defaultKey = 'BACK', onPressed = function() Scene.stopCamera() end })
+cameraBindings.next = Kora.keybind.add({ name = 'qbhousing_camera_next', description = 'Housing: Next Security Camera', defaultMapper = 'keyboard', defaultKey = 'RIGHT', onPressed = function() switchCamera(1) end })
+cameraBindings.previous = Kora.keybind.add({ name = 'qbhousing_camera_previous', description = 'Housing: Previous Security Camera', defaultMapper = 'keyboard', defaultKey = 'LEFT', onPressed = function() switchCamera(-1) end })
 
 RegisterNetEvent('qbhousing:client:spacesChanged', Scene.syncSpaces)
 RegisterNetEvent('qbhousing:client:sceneChanged', function(scene)

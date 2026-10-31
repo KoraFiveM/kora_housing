@@ -72,7 +72,7 @@ def main():
             assert query(fingerprint) == before, "Migration changed legacy source data."
             assert query("SELECT property_type,revision,ownership_revision FROM qbhousing_properties;") == "legacy\t0\t0"
             state = (migrations.parent / "server" / "state.lua").read_text()
-            backup = re.search(r"local backedUp, backupErr = QB\.sql\.execute\(\[\[(.*?)\]\]\)", state, re.S)
+            backup = re.search(r"local backedUp, backupErr = Kora\.sql\.execute\(\[\[(.*?)\]\]\)", state, re.S)
             assert backup, "Cannot find the actual startup backup query."
             query(backup.group(1))
             query(backup.group(1))
@@ -82,8 +82,8 @@ def main():
                 function AddEventHandler() end
                 local tools = dofile('../kora_core/test/mocks.lua')
                 json = { encode = tools.stableEncode, decode = tools.simpleDecode }
-                QB = { sql = { NULL = '\\0qbsql:null\\0' } }
-                QB.sql.transactionChecked = function(statements) print(json.encode(statements)); return {success=true} end
+                Kora = { sql = { NULL = '\\0qbsql:null\\0' } }
+                Kora.sql.transactionChecked = function(statements) print(json.encode(statements)); return {success=true} end
                 dofile('config.lua'); dofile('shared/schema.lua'); dofile('server/state.lua')
                 assert(Housing.state.persist({ id='generated', owner='OWNER', propertyType='land',
                     coowners={COOWNER=true}, permissionGrants={KEYHOLDER={entry=false}}, keys={} },
