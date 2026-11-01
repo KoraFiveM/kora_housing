@@ -27,7 +27,7 @@ local function policy(row)
     return function(src, _, _, context)
         local cid = P.citizenId(src)
         if not cid or S.frozen[row.property_id] or Housing.transactions.busy(row.property_id)
-            or State.isUncertain and State.isUncertain(row.property_id) then return false end
+            or State.isUncertain(row.property_id) then return false end
         if row.status == 'recovery' then
             if not context or not context.recovery then return false end
             if row.lease_id then return cid == row.tenant end
@@ -50,7 +50,7 @@ end
 local function register(row)
     if not row then return false, 'Stash was not found.' end
     local property = State.get(row.property_id)
-    if not row or not property then return false, 'Stash property was not found.' end
+    if not property then return false, 'Stash property was not found.' end
     if row.status == 'recovery' then
         local rebound = invoke('RebindStashPolicy', row.id, policy(row))
         if rebound then return true end
@@ -124,7 +124,7 @@ function S.openStash(src, id, stashId)
     stashId = stashId or expected
     local row = Kora.sql.single('SELECT * FROM `qbhousing_stashes` WHERE `id`=? AND `property_id`=?', { stashId, id })
     if not row and not lease and stashId == expected then
-        local property, position = State.get(id), coords(State.get(id))
+        local position = coords(State.get(id))
         if not position then return false, 'Configure a stash position first.' end
         local saved, err = Kora.sql.execute('INSERT IGNORE INTO `qbhousing_stashes` (`id`,`property_id`,`status`,`coords`) VALUES (?,?,?,?)', { stashId, id, 'active', json.encode(position) })
         if not saved then return false, err end
@@ -255,7 +255,7 @@ function S.registerGarage(id)
     local ok, result, err = pcall(function()
         return exports.kora_garages:RegisterPropertyGarage(key, { label = property.label, coords = property.garage.coords, spawn = property.garage.spawn,
             slots = property.garage.slots, capacityOwnerIds = owners, retrievalOnly = property.state == 'archived' }, function(src, action)
-                if Housing.transactions.busy(id) or State.isUncertain and State.isUncertain(id) then return false end
+                if Housing.transactions.busy(id) or State.isUncertain(id) then return false end
                 if P.can(src, id, 'garage.' .. action) then return true end
                 if action ~= 'retrieve' and action ~= 'list' then return false end
                 local cid = P.citizenId(src)

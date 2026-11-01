@@ -94,7 +94,6 @@ register('useFixture', function(src, id, kind) return Housing.legacy.useFixture(
 register('recoveryList', Housing.storage.recoveryList)
 register('worldSpaces', function() return true, Housing.world.publicSpaces() end)
 
--- Retain the original callback names and result shapes for external consumers.
 register('hydrate', function(src)
     return { properties = State.snapshot(), realtor = P.isRealtor(src), citizenid = P.citizenId(src), ready = State.ready }
 end)

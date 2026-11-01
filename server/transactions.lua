@@ -16,7 +16,7 @@ local function publish(row)
     if T.pending[row.property_id] and T.pending[row.property_id].id == row.id then T.pending[row.property_id] = nil end
     if not stale and row.kind == 'sale' then
         D.agents[row.property_id] = nil
-        if Housing.world.ownershipChanged then Housing.world.ownershipChanged(row.property_id, result.property.owner) end
+        Housing.world.ownershipChanged(row.property_id, result.property.owner)
     end
     if Housing.storage then
         Housing.storage.unfreeze(row.property_id)
