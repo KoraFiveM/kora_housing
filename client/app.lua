@@ -215,7 +215,7 @@ buildNavigation = function()
     local listings = {}
     for _, property in ipairs(catalog) do
         listings[#listings + 1] = { id = property.listing.id, label = property.label or property.id, description = property.listing.biography or property.propertyType,
-            metadata = { { label = text('price'), value = money(property.listing and property.listing.price) } },
+            metadata = { { label = text('price'), value = money(property.listing.price) } },
             actions = { { id = 'market:inspect', label = 'Inspect property', icon = 'Search' }, { id = 'sales:submit', label = text('request_purchase'), fields = { field('amount', 'price', 'number', property.listing.price, { required = true, min = 1, max = 1000000000, wholeNumber = true }) } } } }
     end
     local navigation = {

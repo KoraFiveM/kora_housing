@@ -1,10 +1,5 @@
 Housing = Housing or {}
 
-local function number(value, fallback)
-    value = tonumber(value)
-    return value or fallback
-end
-
 function Housing.copy(value)
     return json.decode(json.encode(value))
 end
@@ -25,7 +20,7 @@ function Housing.normalise(value)
     value.label = value.label or value.id
     value.revision = tonumber(value.revision) or 0
     value.ownershipRevision = tonumber(value.ownershipRevision) or 0
-    if value.garage then value.garage.slots = math.max(1, math.min(Config.maxGarageSlots, number(value.garage.slots, Config.defaultGarageSlots))) end
+    if value.garage then value.garage.slots = math.max(1, math.min(Config.maxGarageSlots, tonumber(value.garage.slots) or Config.defaultGarageSlots)) end
     return value
 end
 

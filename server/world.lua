@@ -3,7 +3,7 @@ local World, State, Permissions = Housing.world, Housing.state, Housing.permissi
 local placements, viewers, occupants, subscribers, occupantCitizenIds, occupantSessions = {}, {}, {}, {}, {}, {}
 local publishedRevisions = {}
 local serial = 0
-local function uncertain(id) return State.isUncertain and State.isUncertain(id) end
+local uncertain = State.isUncertain
 
 local function token()
     serial = serial + 1
@@ -104,7 +104,7 @@ local function checked(statements, src, id, action, context)
     local cid = src and Permissions.citizenId(src)
     local result, err = Kora.sql.transactionChecked(statements, { key = operation, fingerprint = operation, citizenids = cid and { cid } or {} })
     if not result or not result.success then
-        if (not result or result.code == 'indeterminate') and State.markUncertain then
+        if not result or result.code == 'indeterminate' then
             State.markUncertain(id, operation)
             World.changed(id)
         end
@@ -230,7 +230,7 @@ function World.beginPlacement(src, id, model, furnitureId)
     if type(model) ~= 'string' or not Config.furnitureModels[model] then return false, 'Choose a supported furniture model.' end
     local previous = furnitureId and World.furniture[furnitureId]
     local cid = Permissions.citizenId(src)
-    local lease = Housing.leases and Housing.leases.active(id)
+    local lease = Housing.leases.active(id)
     if furnitureId and (not previous or previous.propertyId ~= id or previous.status ~= 'placed' or previous.model ~= model) then return false, 'Furniture was not found.' end
     if previous and lease and previous.ownerCid ~= cid then return false, 'You may only move your own furniture during this tenancy.' end
     if not previous and #items(id, World.furniture) >= limit(id) then return false, 'This property has reached its furniture limit.' end
@@ -307,7 +307,7 @@ function World.savePlacement(src, id, key, transform, revision)
         if not validTransform(transform, space) then return false, 'Furniture must have a valid transform inside this property.' end
         if not session.furnitureId and #items(id, World.furniture) >= limit(id) then return false, 'This property has reached its furniture limit.' end
         local previous = session.furnitureId and World.furniture[session.furnitureId]
-        local lease = Housing.leases and Housing.leases.active(id)
+        local lease = Housing.leases.active(id)
         if (lease and lease.id) ~= session.leaseId then return false, 'The tenancy changed. Start placement again.' end
         if session.furnitureId and (not previous or previous.status ~= 'placed' or previous.revision ~= revision) then return false, 'Furniture changed. Refresh it first.' end
         local value = { id = session.furnitureId or key, propertyId = id, ownerCid = previous and previous.ownerCid or Permissions.citizenId(src), leaseId = previous and previous.leaseId or session.leaseId,
@@ -326,7 +326,7 @@ function World.removeFurniture(src, id, furnitureId, revision)
         if not property then return false, err end
         local item = World.furniture[furnitureId]
         if not item or item.propertyId ~= id or item.status ~= 'placed' or item.revision ~= revision then return false, 'Furniture changed or was removed.' end
-        local lease = Housing.leases and Housing.leases.active(id)
+        local lease = Housing.leases.active(id)
         if lease and item.ownerCid ~= Permissions.citizenId(src) then return false, 'You may only remove your own furniture during this tenancy.' end
         local value = Housing.copy(item)
         value.status, value.revision = 'removed', value.revision + 1
@@ -377,7 +377,7 @@ function World.claimFurniture(src, furnitureId, targetId, transform)
         local sourceId, value = item.propertyId, Housing.copy(item)
         value.propertyId, value.status, value.coords, value.rotation = targetId, 'placed', Housing.copy(transform.coords), Housing.copy(transform.rotation)
         value.heading, value.revision, value.claimTarget, value.claimedBy = transform.heading or transform.rotation.yaw, value.revision + 1, targetId, cid
-        local lease = Housing.leases and Housing.leases.active(targetId)
+        local lease = Housing.leases.active(targetId)
         value.leaseId = lease and lease.id
         local ok, err = checked({ furnitureWrite(value, item.revision) }, src, targetId, 'furniture.claim', { furniture = furnitureId })
         if not ok then return false, err end
@@ -404,14 +404,14 @@ end
 function World.changed(id)
     for src, session in pairs(viewers) do
         local property = State.get(session.propertyId)
-        local lease = Housing.leases and Housing.leases.active(session.propertyId)
+        local lease = Housing.leases.active(session.propertyId)
         local space = World.spaces[session.propertyId]
         if (not id or id == session.propertyId) and (uncertain(session.propertyId) or not property or not space or space.revision ~= session.spaceRevision or property.revision ~= session.propertyRevision
             or (lease and lease.id) ~= session.leaseId or not Permissions.can(src, session.propertyId, 'camera.view')) then closeViewer(src, 'Camera access changed.') end
     end
     for key, session in pairs(placements) do
         local property, space = State.get(session.propertyId), World.spaces[session.propertyId]
-        local lease = Housing.leases and Housing.leases.active(session.propertyId)
+        local lease = Housing.leases.active(session.propertyId)
         if (not id or session.propertyId == id) and (uncertain(session.propertyId) or not property or property.state == 'archiving' or property.state == 'archived' or not space
             or property.revision ~= session.propertyRevision or space.revision ~= session.spaceRevision or (lease and lease.id) ~= session.leaseId
             or not Permissions.can(session.source, session.propertyId, session.furnitureId and 'furniture.move' or 'furniture.place')) then cancelPlacement(key, 'Property access or placement settings changed.') end
@@ -513,7 +513,7 @@ function World.openCamera(src, id, cameraId)
     for viewer, session in pairs(viewers) do if viewer ~= src and session.propertyId == id then count = count + 1 end end
     if count >= Config.maxCameraViewers then return false, 'This property has reached its viewer limit.' end
     local key, expires = token(), os.time() + Config.cameraSessionSeconds
-    local lease = Housing.leases and Housing.leases.active(id)
+    local lease = Housing.leases.active(id)
     viewers[src] = { token = key, propertyId = id, cameraId = cameraId, propertyRevision = property.revision, spaceRevision = space.revision, leaseId = lease and lease.id, expiresAt = expires }
     SetTimeout(Config.cameraSessionSeconds * 1000, function() if viewers[src] and viewers[src].token == key then closeViewer(src, 'Camera authorization expired.') end end)
     for occupant, propertyId in pairs(occupants) do if propertyId == id then TriggerClientEvent('qbhousing:client:cameraNotice', occupant, property.label) end end
