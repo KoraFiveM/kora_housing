@@ -17,6 +17,7 @@ cd "$(dirname "$0")/.."
 "${LUA:-lua}" tests/reconciliation.lua
 
 "${LUA:-lua}" tests/legacy_access.lua
+"${LUA:-lua}" tests/phone_compat.lua
 
 "${LUA:-lua}" tests/stock_import.lua
 

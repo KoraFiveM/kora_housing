@@ -9,7 +9,7 @@ local core = {
 }
 exports=setmetatable({kora_core=core},{__call=function(_, name, fn) provided[name]=fn end})
 function AddEventHandler(name, fn) handlers[name]=fn end
-Kora={compat=dofile('../kora_lib/compat/provider.lua')()}
+Kora={compat=dofile('../kora_lib/compat/provider.lua')(),callback={register=function() end}}
 Config={}
 dofile('server/permissions.lua');dofile('server/compat.lua')
 local legacy;handlers['__cfx_export_qb-houses_hasKey'](function(fn) legacy=fn end)
