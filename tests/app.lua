@@ -224,7 +224,7 @@ for key, value in pairs(_G) do environment[key] = value end
 environment.Kora = { interact = {
     addBoxZone = function(id) zones[id] = true; return {} end,
     removeZone = function(id) zones[id] = nil end,
-} }
+}, keybind = { add = function() return { disable = function() end } end } }
 environment.Housing = { app = {
     sync = function() syncs = syncs + 1 end,
     close = function() closes = closes + 1 end,

@@ -30,6 +30,8 @@ Kora.stream={loadModel=function(_,callback) if pausing then coroutine.yield() en
 Kora.visuals={fade=function() fades=fades+1 end}
 Kora.interact={removeZone=function() end}
 Kora.textui={hide=function() end}
+Kora.keybind={add=function() return {disable=function() end} end}
+Kora.zones={sphere=function() return {remove=function() end} end}
 Kora.notify={send=function() end}
 dofile('../kora_interior/client/main.lua')
 resource='kora_housing'

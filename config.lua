@@ -55,6 +55,13 @@ Config.propertyTypes = {
     land = { label = 'Land or lot', interior = 'none' },
 }
 
+-- Legacy shell exit: the "Leave property" prompt and key are active while the
+-- player is within `radius` metres of the shell exit point (zone driven, no polling).
+Config.shellExit = {
+    radius = 1.5,
+    key = 'E', -- default key; players can rebind it in their key settings
+}
+
 Config.shells = {
     CreateApartmentShell = { label = 'Apartment', model = 'shell_v16low', basePrice = 125000, exit = { x = 4.693, y = -6.015, z = 1.11, w = 358.634 } },
     CreateTier1House = { label = 'Tier 1 House', model = 'shell_v16mid', basePrice = 200000, exit = { x = 1.561, y = -14.305, z = 1.147, w = 2.263 } },

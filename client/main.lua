@@ -1,7 +1,9 @@
 local Properties = {}
 local shellObjects, currentProperty = {}, nil
-local leavePrompt
+local leavePrompt, leaveZone
 local interactionZones = {}
+local exitConfig = Config.shellExit or {}
+local leaveKey = exitConfig.key or 'E'
 
 local function removeObjects(objects)
     if #objects == 0 then return end
@@ -12,12 +14,26 @@ local function removeObjects(objects)
     end
 end
 
+-- The leave prompt and key only exist while the player stands on the exit point,
+-- so nothing polls: the shared zone grid drives both.
+local leaveBinding
+
+local function setLeaveActive(active)
+    if leaveBinding then leaveBinding.disable(not active) end
+    if active then
+        leavePrompt = leavePrompt or Kora.textui.show('Leave property', { key = leaveKey })
+    elseif leavePrompt then
+        Kora.textui.hide(leavePrompt); leavePrompt = nil
+    end
+end
+
 local function removeShell()
     local hadProperty = currentProperty ~= nil
     removeObjects(shellObjects)
     shellObjects, currentProperty = {}, nil
     if Housing.fixtures then Housing.fixtures.clear() end
-    if leavePrompt then Kora.textui.hide(leavePrompt); leavePrompt = nil end
+    if leaveZone then leaveZone.remove(); leaveZone = nil end
+    setLeaveActive(false)
     if hadProperty then TriggerServerEvent('qbhousing:server:leaveProperty') end
 end
 
@@ -89,34 +105,31 @@ RegisterNetEvent('qbhousing:client:enterShell', function(property)
     Housing.fixtures.enter(property.id, property.fixtures, property.furniture)
     SetEntityCoords(PlayerPedId(), spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0), false, false, false, false)
     SetEntityHeading(PlayerPedId(), property.interior.exit.w or property.interior.exit.h or 0)
+    leaveZone = Kora.zones.sphere({
+        coords = vector3(spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0)),
+        radius = exitConfig.radius or 1.5,
+        includeBoundary = false,
+        onEnter = function() if currentProperty == property then setLeaveActive(true) end end,
+        onExit = function() setLeaveActive(false) end,
+    })
 end)
 
-RegisterNetEvent('qbhousing:client:leaveProperty', function()
+local function leaveProperty()
     if not currentProperty then return end
     local entrance = currentProperty.interior.entrance
     removeShell()
     if entrance then SetEntityCoords(PlayerPedId(), entrance.x, entrance.y, entrance.z, false, false, false, false) end
-end)
+end
 
-CreateThread(function()
-    while true do
-        if not currentProperty then Wait(1000) goto continue end
-        Wait(0)
-        local exit = currentProperty.interior.exit
-        local origin = currentProperty.interior.origin or currentProperty.interior.entrance
-        local coords = GetEntityCoords(PlayerPedId())
-        local distance = #(coords - vector3(origin.x + (exit.x or 0.0), origin.y + (exit.y or 0.0), origin.z + (exit.z or 0.0)))
-        if distance < 1.5 then
-            leavePrompt = leavePrompt or Kora.textui.show('Leave property', { key = 'E' })
-            if IsControlJustReleased(0, 38) then
-                local entrance = currentProperty.interior.entrance
-                removeShell()
-                if entrance then SetEntityCoords(PlayerPedId(), entrance.x, entrance.y, entrance.z, false, false, false, false) end
-            end
-        elseif leavePrompt then Kora.textui.hide(leavePrompt); leavePrompt = nil end
-        ::continue::
-    end
-end)
+RegisterNetEvent('qbhousing:client:leaveProperty', leaveProperty)
+
+leaveBinding = Kora.keybind.add({
+    name = 'kora_housing_leave',
+    description = 'Housing: Leave property',
+    defaultKey = leaveKey,
+    disabled = true,
+    onReleased = leaveProperty,
+})
 
 CreateThread(function() Wait(1000); hydrate() end)
 AddEventHandler('QBCore:Client:OnPlayerLoaded', hydrate)
