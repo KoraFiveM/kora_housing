@@ -142,10 +142,13 @@ local function round2(value) return math.floor(value * 100 + 0.5) / 100 end
 
 local function positionActions(values)
     local actions = {}
-    if Config.positionPicker == false or values.propertyType == 'land' then return actions end
+    if Config.positionPicker == false then return actions end
     local function add(id) actions[#actions + 1] = { id = 'configuration:position:' .. id, label = text(POSITION_FIELDS[id].label), icon = 'Crosshair' } end
-    if values.interiorType and values.interiorType ~= 'none' then add('entrance') end
-    if values.interiorType == 'mlo' then add('exit') end
+    -- Same conditions as configurationFields: land has no interior fields but can still have a garage.
+    if values.propertyType ~= 'land' and values.interiorType ~= 'none' then
+        add('entrance')
+        if values.interiorType == 'mlo' then add('exit') end
+    end
     if values.garageEnabled then add('garageCoords'); add('garageSpawn') end
     return actions
 end

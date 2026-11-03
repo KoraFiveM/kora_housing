@@ -220,6 +220,17 @@ editor = assert(form(result.app, 'new'))
 local entrance, spawn = getField(editor, 'entrance').default, getField(editor, 'garageSpawn').default
 check(entrance.x == 10.13 and entrance.y == -20.5 and entrance.z == 30.01 and entrance.w == 90.11, 'entrance is filled from the position rounded to 2 dp')
 check(spawn.w == 270.46 and getField(editor, 'garageCoords').default.w == 270.46, 'garage fields use the vehicle heading in a vehicle')
+local function positionIds(app)
+    local ids = {}
+    for _, view in ipairs(app.navigation) do
+        if view.id == 'new' then for _, action in ipairs(view.content.actions) do ids[action.id] = true end end
+    end
+    return ids
+end
+actionIds = positionIds(change('property:create', { viewId = 'new', value = { id = 'plot', label = 'Plot', propertyType = 'land', interiorType = 'shell', garageEnabled = true } }).app)
+check(actionIds['configuration:position:garageCoords'] and actionIds['configuration:position:garageSpawn'] and not actionIds['configuration:position:entrance'], 'land with a garage gets the garage position buttons but no entrance button')
+actionIds = positionIds(change('property:create', { viewId = 'new', value = { id = 'mlo', label = 'MLO', propertyType = 'house', interiorType = 'mlo' } }).app)
+check(actionIds['configuration:position:entrance'] and actionIds['configuration:position:exit'] and not actionIds['configuration:position:garageCoords'], 'an MLO gets entrance and exit buttons, no garage buttons without a garage')
 Config.positionPicker = false
 result = change('property:create', { viewId = 'new', value = { id = 'pick', label = 'Pick', propertyType = 'house', interiorType = 'shell' } })
 for _, view in ipairs(result.app.navigation) do
