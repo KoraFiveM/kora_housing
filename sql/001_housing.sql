@@ -1,8 +1,0 @@
-CREATE TABLE IF NOT EXISTS `qbhousing_properties` (
-  `id` VARCHAR(64) NOT NULL,
-  `owner` VARCHAR(50) NULL,
-  `definition` LONGTEXT NOT NULL,
-  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_qbhousing_owner` (`owner`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

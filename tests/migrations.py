@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise housing migrations in a disposable, socket-only MariaDB instance."""
+"""Exercise the housing schema (server/schema.lua) in a disposable, socket-only MariaDB instance."""
 import json
 import os
 from pathlib import Path
@@ -10,12 +10,44 @@ import tempfile
 import time
 
 
+DUMP = r"""
+Kora = { sql = { NULL = '\0qbsql:null\0' } }
+dofile('server/schema.lua')
+local function enc(v)
+    local t = type(v)
+    if t == 'boolean' or t == 'number' then return tostring(v) end
+    if t == 'string' then return '"' .. v:gsub('[%c"\\]', function(c) return ('\\u%04x'):format(c:byte()) end) .. '"' end
+    local out = {}
+    if #v > 0 or next(v) == nil then
+        for i = 1, #v do out[i] = enc(v[i]) end
+        return '[' .. table.concat(out, ',') .. ']'
+    end
+    for k, x in pairs(v) do out[#out + 1] = enc(tostring(k)) .. ':' .. enc(x) end
+    return '{' .. table.concat(out, ',') .. '}'
+end
+print(enc(QBHousingSchema))
+"""
+
+BUILD = """
+const { validateSpec, buildCreate } = require(process.argv[1]);
+const specs = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(specs.map((spec) => buildCreate(validateSpec(spec)) + ';').join('\\n'));
+"""
+
+
+def schema_sql(root):
+    dumped = subprocess.run(["lua", "-"], cwd=root, text=True, capture_output=True, check=True, input=DUMP).stdout
+    handler = root.parent / "kora_sql" / "server" / "js" / "schema.js"
+    return subprocess.run(["node", "-e", BUILD, str(handler)], text=True, capture_output=True, check=True, input=dumped).stdout
+
+
 def main():
-    required = ("mariadb-install-db", "mariadbd", "mysql", "lua")
+    required = ("mariadb-install-db", "mariadbd", "mysql", "lua", "node")
     for command in required:
         if not shutil.which(command):
             raise SystemExit(f"Missing {command}; this optional test requires local MariaDB binaries.")
-    migrations = Path(__file__).resolve().parents[1] / "sql"
+    housing = Path(__file__).resolve().parents[1]
+    ddl = schema_sql(housing)
     with tempfile.TemporaryDirectory(prefix="qbhousing-migration-") as directory:
         root = Path(directory)
         subprocess.run([
@@ -54,7 +86,7 @@ def main():
             version = query("SELECT VERSION();")
             query("CREATE DATABASE housing_test CHARACTER SET utf8mb4;")
             arguments.append("housing_test")
-            query((migrations / "001_housing.sql").read_text())
+            query(ddl)
             legacy = json.dumps({
                 "id": "legacy_home", "owner": "OWNER", "keys": {"KEYHOLDER": True},
                 "unknownConsumerField": {"preserve": True}, "interior": {"type": "mlo"},
@@ -63,22 +95,17 @@ def main():
             query("INSERT INTO qbhousing_properties(id,owner,definition) VALUES ('legacy_home','OWNER'," + literal + ");")
             fingerprint = "SELECT SHA2(CONCAT(id,COALESCE(owner,''),definition),256) FROM qbhousing_properties;"
             before = query(fingerprint)
-            migration = (migrations / "002_registry_access.sql").read_text()
-            query(migration)
-            query(migration)
-            for filename in ("003_economy.sql", "004_world.sql", "005_stock_import.sql"):
-                query((migrations / filename).read_text())
-                query((migrations / filename).read_text())
+            query(ddl)
             assert query(fingerprint) == before, "Migration changed legacy source data."
             assert query("SELECT property_type,revision,ownership_revision FROM qbhousing_properties;") == "legacy\t0\t0"
-            state = (migrations.parent / "server" / "state.lua").read_text()
+            state = (housing / "server" / "state.lua").read_text()
             backup = re.search(r"local backedUp, backupErr = Kora\.sql\.execute\(\[\[(.*?)\]\]\)", state, re.S)
             assert backup, "Cannot find the actual startup backup query."
             query(backup.group(1))
             query(backup.group(1))
             assert query("SELECT definition_sha256=SHA2(definition,256) FROM qbhousing_legacy_backup WHERE property_id='legacy_home';") == "1"
 
-            capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+            capture = subprocess.run(["lua", "-"], cwd=housing, text=True, capture_output=True, check=True, input="""
                 function AddEventHandler() end
                 local tools = dofile('../kora_core/test/mocks.lua')
                 json = { encode = tools.stableEncode, decode = tools.simpleDecode }
@@ -112,7 +139,7 @@ def main():
                 transaction.append("COMMIT;")
                 return "\n".join(transaction)
 
-            stock_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+            stock_capture = subprocess.run(["lua", "-"], cwd=housing, text=True, capture_output=True, check=True, input="""
                 local f = dofile('tests/stock_fixture.lua')()
                 assert(f.housing.legacy.importStock())
                 print(f.json.encode(f.writes[1]))
@@ -132,7 +159,7 @@ def main():
             assert query("SELECT allowed FROM qbhousing_permissions WHERE property_id='old_home' AND citizenid='KEY' AND action='entry';") == "0"
             assert query("SELECT COUNT(*) FROM qbhousing_stock_import WHERE property_id='old_home';") == "1"
 
-            fixture_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+            fixture_capture = subprocess.run(["lua", "-"], cwd=housing, text=True, capture_output=True, check=True, input="""
                 local f = dofile('tests/stock_fixture.lua')()
                 f.locations[1].name='fixture_home';f.owners[1].house='fixture_home'
                 f.owners[1].decorations='[{"hashname":"prop_chair_01a","x":2,"y":3,"z":-26,"rotx":10,"roty":20,"rotz":30}]'
@@ -148,7 +175,7 @@ def main():
             query(prepared_transaction(fixture_statements), succeeds=False)
             assert query("SELECT COUNT(*) FROM qbhousing_furniture WHERE property_id='fixture_home';") == "1"
 
-            upgrade_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+            upgrade_capture = subprocess.run(["lua", "-"], cwd=housing, text=True, capture_output=True, check=True, input="""
                 local f = dofile('tests/stock_fixture.lua')()
                 f.locations[1].name='upgrade_home';f.owners[1].house='upgrade_home'
                 f.owners[1].decorations='[{"hashname":"prop_chair_01a","x":2,"y":3,"z":-26,"rotx":10,"roty":20,"rotz":30}]'
@@ -206,7 +233,7 @@ def main():
             """, succeeds=False)
             assert query("SELECT owner FROM qbhousing_properties WHERE id='legacy_home';") == "OWNER"
             # Use the actual sale service's emitted statements against real tables.
-            sale_capture = subprocess.run(["lua", "-"], cwd=migrations.parent, text=True, capture_output=True, check=True, input="""
+            sale_capture = subprocess.run(["lua", "-"], cwd=housing, text=True, capture_output=True, check=True, input="""
                 local f = dofile('tests/domain_fixture.lua')()
                 assert(f.housing.sales.completeSale(2, 'offer'))
                 local call = f.bankCalls[1]

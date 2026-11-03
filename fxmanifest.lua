@@ -31,6 +31,7 @@ shared_scripts {
 }
 
 server_scripts {
+    'server/schema.lua',
     'server/state.lua',
     'server/legacy.lua',
     'server/permissions.lua',
@@ -58,4 +59,4 @@ client_scripts {
     'client/main.lua',
 }
 
-files { 'sql/*.sql', 'locales/*.lua' }
+files { 'locales/*.lua' }

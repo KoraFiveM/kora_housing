@@ -22,6 +22,7 @@ cd "$(dirname "$0")/.."
 "${LUA:-lua}" tests/stock_import.lua
 
 "${LUA:-lua}" tests/legacy_sql.lua
+"${LUA:-lua}" tests/schema.lua
 
 "${LUA:-lua}" tests/legacy_fixtures.lua
 "${LUA:-lua}" tests/fixtures_client.lua
