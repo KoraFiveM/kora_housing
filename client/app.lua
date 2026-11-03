@@ -130,6 +130,42 @@ local function configurationPayload(property, values)
     return payload
 end
 
+-- Form fields that can be filled from the player position; `vehicle` uses the vehicle heading when driving.
+local POSITION_FIELDS = {
+    entrance = { label = 'use_position_entrance' },
+    exit = { label = 'use_position_exit' },
+    garageCoords = { label = 'use_position_garage', vehicle = true },
+    garageSpawn = { label = 'use_position_spawn', vehicle = true },
+}
+
+local function round2(value) return math.floor(value * 100 + 0.5) / 100 end
+
+local function positionActions(values)
+    local actions = {}
+    if Config.positionPicker == false or values.propertyType == 'land' then return actions end
+    local function add(id) actions[#actions + 1] = { id = 'configuration:position:' .. id, label = text(POSITION_FIELDS[id].label), icon = 'Crosshair' } end
+    if values.interiorType and values.interiorType ~= 'none' then add('entrance') end
+    if values.interiorType == 'mlo' then add('exit') end
+    if values.garageEnabled then add('garageCoords'); add('garageSpawn') end
+    return actions
+end
+
+local function usePosition(property, id)
+    local spec = POSITION_FIELDS[id]
+    if not spec or Config.positionPicker == false then return failure(text('unavailable')) end
+    local coords = Kora.cache.coords()
+    if not coords then return failure(text('position_unavailable')) end
+    local entity = spec.vehicle and Kora.cache.vehicle() or false
+    local heading = GetEntityHeading(entity or Kora.cache.ped())
+    local draft = draftFor(property)
+    draft.values[id] = { x = round2(coords.x), y = round2(coords.y), z = round2(coords.z), w = round2(heading) }
+    draft.dirty = true
+    -- A new serial remounts the form so it picks up the filled defaults.
+    nextDraft = nextDraft + 1
+    draft.serial = nextDraft
+    return { update = { navigation = buildNavigation() }, notice = { message = text('position_filled'), tone = 'success' } }
+end
+
 local function configurationContent(property)
     local draft = draftFor(property)
     local pointCount = draft.exterior and #(draft.exterior.polyzone or {}) or 0
@@ -137,6 +173,7 @@ local function configurationContent(property)
         { id = 'configuration:boundary', label = text('place_boundary'), icon = 'MapPinned', closeBeforeAction = true },
         { id = 'configuration:clear-boundary', label = text('clear_boundary'), icon = 'Eraser', disabled = pointCount == 0 },
     }
+    for _, action in ipairs(positionActions(draft.values)) do actions[#actions + 1] = action end
     if property then actions[#actions + 1] = { id = 'configuration:reload', label = text('reload'), icon = 'RefreshCw', confirm = text('reload_confirm') } end
     return {
         title = property and text('configuration') or text('new_property'),
@@ -333,6 +370,10 @@ local function onAction(action, context)
             if not loaded then return failure(loadErr) end
             return { update = { navigation = buildNavigation() }, notice = response.notice }
         end
+    end
+    local positionField = action:match('^configuration:position:(%w+)$')
+    if positionField then
+        return usePosition(context.viewId == 'property' and selected and selected.property or nil, positionField)
     end
     if action == 'configuration:boundary' then
         local property

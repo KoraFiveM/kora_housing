@@ -202,6 +202,31 @@ check(payload.interior == nil and payload.garage.slots == 2 and payload.owner ==
 check(payload.exterior.minZ == 5 and payload.exterior.maxZ == 9, 'boundary height matches kora_lib lowest-point plus thickness semantics')
 check(payload.id == 'land' and payload.label == 'Land', 'new draft retains typed fields across world capture')
 
+-- Use my position: fills entrance on foot and garage fields with the vehicle heading.
+local inVehicle = false
+Kora.cache = { coords = function() return { x = 10.126, y = -20.5, z = 30.005 } end, ped = function() return 1 end, vehicle = function() return inVehicle and 2 or false end }
+function GetEntityHeading(entity) return entity == 2 and 270.456 or 90.114 end
+result = change('property:create', { viewId = 'new', value = { id = 'pick', label = 'Pick', propertyType = 'house', interiorType = 'shell', garageEnabled = true } })
+local actionIds = {}
+for _, view in ipairs(result.app.navigation) do
+    if view.id == 'new' then for _, action in ipairs(view.content.actions) do actionIds[action.id] = true end end
+end
+check(actionIds['configuration:position:entrance'] and actionIds['configuration:position:garageCoords'] and actionIds['configuration:position:garageSpawn'] and not actionIds['configuration:position:exit'], 'position buttons follow the visible coordinate fields')
+act('configuration:position:entrance', { viewId = 'new' })
+inVehicle = true
+act('configuration:position:garageSpawn', { viewId = 'new' })
+result = act('configuration:position:garageCoords', { viewId = 'new' })
+editor = assert(form(result.app, 'new'))
+local entrance, spawn = getField(editor, 'entrance').default, getField(editor, 'garageSpawn').default
+check(entrance.x == 10.13 and entrance.y == -20.5 and entrance.z == 30.01 and entrance.w == 90.11, 'entrance is filled from the position rounded to 2 dp')
+check(spawn.w == 270.46 and getField(editor, 'garageCoords').default.w == 270.46, 'garage fields use the vehicle heading in a vehicle')
+Config.positionPicker = false
+result = change('property:create', { viewId = 'new', value = { id = 'pick', label = 'Pick', propertyType = 'house', interiorType = 'shell' } })
+for _, view in ipairs(result.app.navigation) do
+    if view.id == 'new' then for _, action in ipairs(view.content.actions) do check(not action.id:find('position', 1, true), 'config disables position buttons') end end
+end
+Config.positionPicker = true
+
 local imported = copy(Housing.state.properties.existing)
 imported.id, imported.propertyType, imported.garage = 'imported', 'legacy', nil
 Housing.state.properties.imported = imported

@@ -5,6 +5,9 @@ Config = {
     societyCommission = 0.03,
     defaultGarageSlots = 2,
     maxGarageSlots = 12,
+    -- Show "Use my position" buttons in the property creator that fill the entrance, exit
+    -- and garage X/Y/Z/heading fields from the player's position (vehicle heading for garage fields when driving).
+    positionPicker = true,
     maxFurniture = 100,
     maxStashes = 20,
     maxClothingSpots = 20,
