@@ -76,6 +76,12 @@ local function field(id, label, kind, default, options)
     return result
 end
 
+-- kora_lib vector fields can fill themselves from the player position (pickPosition).
+local function pickPosition(vehicle)
+    if Config.positionPicker == false then return nil end
+    return vehicle and { vehicle = true } or true
+end
+
 local function configurationFields(property)
     local values = draftFor(property).values
     local fields = {}
@@ -95,16 +101,16 @@ local function configurationFields(property)
         fields[#fields + 1] = field('shellName', 'shell', 'select', values.shellName, { required = true, options = sortedOptions(snapshot.shells) })
     end
     if values.interiorType ~= 'none' then
-        fields[#fields + 1] = field('entrance', 'entrance', 'vector', values.entrance, { required = true, dimensions = 4 })
+        fields[#fields + 1] = field('entrance', 'entrance', 'vector', values.entrance, { required = true, dimensions = 4, pickPosition = pickPosition() })
         if values.interiorType == 'mlo' then
-            fields[#fields + 1] = field('exit', 'exit', 'vector', values.exit, { dimensions = 4 })
+            fields[#fields + 1] = field('exit', 'exit', 'vector', values.exit, { dimensions = 4, pickPosition = pickPosition() })
         end
     end
     end
     fields[#fields + 1] = field('garageEnabled', 'configure_garage', 'checkbox', values.garageEnabled)
     if values.garageEnabled then
-        fields[#fields + 1] = field('garageCoords', 'garage_coords', 'vector', values.garageCoords, { required = true, dimensions = 4 })
-        fields[#fields + 1] = field('garageSpawn', 'garage_spawn', 'vector', values.garageSpawn, { required = true, dimensions = 4 })
+        fields[#fields + 1] = field('garageCoords', 'garage_coords', 'vector', values.garageCoords, { required = true, dimensions = 4, pickPosition = pickPosition(true) })
+        fields[#fields + 1] = field('garageSpawn', 'garage_spawn', 'vector', values.garageSpawn, { required = true, dimensions = 4, pickPosition = pickPosition(true) })
         fields[#fields + 1] = field('garageSlots', 'garage_slots', 'number', values.garageSlots, { required = true, min = 1, max = Config.maxGarageSlots, wholeNumber = true })
     end
     return fields

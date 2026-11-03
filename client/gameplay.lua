@@ -11,7 +11,7 @@ local function field(id, label, kind, default, settings)
 end
 local function number(id, label, default, zero) return field(id, label, 'number', default, { required = true, min = zero and 0 or 1, max = 1000000000, wholeNumber = true }) end
 local function citizen(id, label) return field(id or 'citizenid', label or 'Citizen ID', 'text', nil, { required = true, maxLength = 50 }) end
-local function vector(id, label, default, required) return field(id, label, 'vector', default, { dimensions = 3, required = required ~= false }) end
+local function vector(id, label, default, required) return field(id, label, 'vector', default, { dimensions = 3, required = required ~= false, pickPosition = Config.positionPicker ~= false or nil }) end
 local function money(value) return ('$%.0f'):format(tonumber(value) or 0) end
 local function time(value)
     local seconds = tonumber(value)

@@ -6,7 +6,8 @@ Config = {
     defaultGarageSlots = 2,
     maxGarageSlots = 12,
     -- Show "Use my position" buttons in the property creator that fill the entrance, exit
-    -- and garage X/Y/Z/heading fields from the player's position (vehicle heading for garage fields when driving).
+    -- and garage X/Y/Z/heading fields from the player's position (vehicle heading for garage fields when driving). Also sets pickPosition on the
+    -- vector fields themselves (kora_lib form button), including storage, shell origin and camera console.
     positionPicker = true,
     maxFurniture = 100,
     maxStashes = 20,
