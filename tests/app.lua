@@ -157,8 +157,14 @@ Housing.world = { ready = true, snapshot = function() return true, { space = { r
     grants = { { citizenid = 'guest', expiresAt = 1700000000 } }, alarm = { armed = true, revision = 2, doorUnlock = true, panic = true, cooldown = 60 } } end }
 Kora.sql = { query = function(sql) return sql:find('qbhousing_offers') and copy(richSales.offers) or { copy(richLease) } end }
 Housing.app.open('properties')
-result = act('property:open', { itemId = 'existing' })
+local hostOs = os
+os = nil -- FiveM client Lua has no os library
+local opened, openResult = pcall(act, 'property:open', { itemId = 'existing' })
+os = hostOs
+check(opened, 'property:open works without the os library: ' .. tostring(openResult))
+result = openResult
 check(form(result.app, 'property', 'rental') ~= nil and form(result.app, 'property', 'world') ~= nil, 'populated rental and security definitions pass the real AppShell validator')
+check(hostOs.date('!%Y-%m-%d %H:%M', 1700000000) == '2023-11-14 22:13', 'host reference date')
 result = act('sales:recommend', { tabId = 'sales', itemId = 'offer', value = { recommendation = 'Reviewed the offer.' } })
 check(calls['qbhousing:recommendOffer'][1] == 'offer' and result.notice.tone == 'success', 'actual sales payload uses the property view sales field and durable offer id')
 result = act('world:alarm-configure', { tabId = 'world', value = { doorUnlock = true, panic = false, cooldown = 90 } })

@@ -13,7 +13,22 @@ local function number(id, label, default, zero) return field(id, label, 'number'
 local function citizen(id, label) return field(id or 'citizenid', label or 'Citizen ID', 'text', nil, { required = true, maxLength = 50 }) end
 local function vector(id, label, default, required) return field(id, label, 'vector', default, { dimensions = 3, required = required ~= false }) end
 local function money(value) return ('$%.0f'):format(tonumber(value) or 0) end
-local function time(value) return tonumber(value) and os.date('%Y-%m-%d %H:%M', tonumber(value)) or tostring(value or '—') end
+local function time(value)
+    local seconds = tonumber(value)
+    if not seconds then return tostring(value or '—') end
+    seconds = math.floor(seconds)
+    local days, rest = seconds // 86400, seconds % 86400
+    local z = days + 719468
+    local era = z // 146097
+    local doe = z - era * 146097
+    local yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+    local doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    local mp = (5 * doy + 2) // 153
+    local day = doy - (153 * mp + 2) // 5 + 1
+    local month = mp < 10 and mp + 3 or mp - 9
+    local year = yoe + era * 400 + (month <= 2 and 1 or 0)
+    return ('%04d-%02d-%02d %02d:%02d'):format(year, month, day, rest // 3600, rest % 3600 // 60)
+end
 local function request(name, ...)
     local ok, result = Kora.callback.trigger('qbhousing:' .. name, ...)
     if ok ~= true then return nil, result or 'Housing is unavailable.' end
