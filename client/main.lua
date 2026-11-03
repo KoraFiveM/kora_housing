@@ -103,8 +103,9 @@ RegisterNetEvent('qbhousing:client:enterShell', function(property)
     end
     shellObjects = objects
     Housing.fixtures.enter(property.id, property.fixtures, property.furniture)
-    SetEntityCoords(PlayerPedId(), spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0), false, false, false, false)
-    SetEntityHeading(PlayerPedId(), property.interior.exit.w or property.interior.exit.h or 0)
+    Housing.scene.place(spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0),
+        property.interior.exit.w or property.interior.exit.h or 0)
+    if currentProperty ~= property then return end
     leaveZone = Kora.zones.sphere({
         coords = vector3(spawn.x + (property.interior.exit.x or 0.0), spawn.y + (property.interior.exit.y or 0.0), spawn.z + (property.interior.exit.z or 0.0)),
         radius = exitConfig.radius or 1.5,

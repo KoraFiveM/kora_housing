@@ -66,6 +66,14 @@ Config.shellExit = {
     key = 'E', -- default key; players can rebind it in their key settings
 }
 
+-- Interior entry. With waitForCollision on, entering a shell interior fades the screen, places the
+-- player frozen at the exit point, requests collision there and waits once (up to timeout ms) for
+-- it to stream in before unfreezing, so the player is not dropped into half-loaded shell geometry.
+-- If collision has not loaded by the timeout the player is released anyway.
+Config.interior = {
+    waitForCollision = { enabled = true, timeout = 5000 },
+}
+
 Config.shells = {
     CreateApartmentShell = { label = 'Apartment', model = 'shell_v16low', basePrice = 125000, exit = { x = 4.693, y = -6.015, z = 1.11, w = 358.634 } },
     CreateTier1House = { label = 'Tier 1 House', model = 'shell_v16mid', basePrice = 200000, exit = { x = 1.561, y = -14.305, z = 1.147, w = 2.263 } },

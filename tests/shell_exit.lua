@@ -19,7 +19,7 @@ function vector3(x, y, z)
 end
 
 dofile('config.lua')
-Housing={fixtures={enter=function() end,clear=function() end}}
+Housing={fixtures={enter=function() end,clear=function() end},scene={place=function(x,y,z,h) SetEntityCoords(PlayerPedId(),x,y,z,false,false,false,false);SetEntityHeading(PlayerPedId(),h) end}}
 for _, name in ipairs({ 'CreateApartmentShell', 'CreateCaravanShell', 'CreateLesterShell', 'CreateGarageMed', 'CreateFurniMotelStandard' }) do
     local events, position, prompt, removed = {}, nil, nil, {}
     local shows, hides, created, heading = 0, 0, 0, nil

@@ -121,6 +121,32 @@ function Scene.syncSpaces(definitions)
     end
 end
 
+-- Places the player at an interior point. With Config.interior.waitForCollision the screen stays
+-- faded and the ped frozen while collision streams in around the target (one bounded wait).
+function Scene.place(x, y, z, heading)
+    local ped = PlayerPedId()
+    local function move()
+        SetEntityCoords(ped, x, y, z, false, false, false, false)
+        SetEntityHeading(ped, heading or 0)
+    end
+    local wait = Config.interior and Config.interior.waitForCollision
+    if type(wait) ~= 'table' or not wait.enabled then return move() end
+    local timeout = type(wait.timeout) == 'number' and wait.timeout >= 0 and wait.timeout % 1 == 0 and wait.timeout or 5000
+    Kora.visuals.fade(250, function()
+        local wasFrozen = IsEntityPositionFrozen(ped)
+        FreezeEntityPosition(ped, true)
+        local ok = pcall(function()
+            move()
+            Kora.loops.controlled(function()
+                RequestCollisionAtCoord(x, y, z)
+                return HasCollisionLoadedAroundEntity(ped)
+            end, false, timeout)
+        end)
+        FreezeEntityPosition(ped, wasFrozen)
+        if not ok then move() end
+    end)
+end
+
 function Scene.leave(tellServer)
     Housing.fixtures.clear()
     local previous = visit
@@ -146,8 +172,8 @@ function Scene.enter(scene, entrance)
             if lifecycle ~= started or not visit or visit.propertyId ~= scene.propertyId then return end
             if not ready then notify(err or 'The interior could not be loaded.', 'error'); Scene.leave(); return end
             local origin, exit = scene.space.origin, scene.interior.exit
-            SetEntityCoords(PlayerPedId(), origin.x + exit.x, origin.y + exit.y, origin.z + exit.z, false, false, false, false)
-            SetEntityHeading(PlayerPedId(), exit.w or 0)
+            Scene.place(origin.x + exit.x, origin.y + exit.y, origin.z + exit.z, exit.w)
+            if lifecycle ~= started or not visit or visit.propertyId ~= scene.propertyId then return end
         elseif scene.interior and scene.interior.exit then
             local exit = scene.interior.exit
             SetEntityCoords(PlayerPedId(), exit.x, exit.y, exit.z, false, false, false, false)
