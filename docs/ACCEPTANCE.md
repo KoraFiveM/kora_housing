@@ -23,7 +23,7 @@ Run `bash tests/run.sh` inside kora_housing. The runner exercises actual housing
 
 Counts mix named test cases and assertions and must not be added into a single invented acceptance count.
 
-Run `python3 tests/migrations.py` for the separate hermetic database check. Executed against a disposable, socket-only MariaDB 10.11.14 instance, with no production connection or credentials. Passed: repeated application of all four housing migrations, preserved legacy source/checksum backup, real generated registry and sale statements, balanced ledger, collating-ID collision, explicit denial, foreign keys/rollback, and unique active listing, accepted offer, pending financial operation, lease, rent period and storage tier constraints.
+Run `python3 tests/migrations.py` for the separate hermetic database check. Executed against a disposable, socket-only MariaDB 10.11.14 instance, with no production connection or credentials. Passed: repeated application of the housing schema, preserved legacy source/checksum backup, real generated registry and sale statements, balanced ledger, collating-ID collision, explicit denial, foreign keys/rollback, and unique active listing, accepted offer, pending financial operation, lease, rent period and storage tier constraints.
 
 ## Executed dependency checks
 
