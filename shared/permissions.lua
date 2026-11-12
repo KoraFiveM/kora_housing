@@ -1,0 +1,42 @@
+Housing = Housing or {}
+
+Housing.permissionActions = {
+    entry = 'Enter property',
+    ['property.create'] = 'Create property',
+    ['property.edit'] = 'Edit property',
+    ['property.archive'] = 'Archive property',
+    ['coowners.manage'] = 'Manage co-owners',
+    ['permissions.manage'] = 'Manage permissions',
+    ['access.share'] = 'Share guest access during a lease',
+    ['stash.open'] = 'Open storage',
+    ['storage.upgrade'] = 'Upgrade storage',
+    ['furniture.place'] = 'Place furniture',
+    ['furniture.move'] = 'Move furniture',
+    ['furniture.remove'] = 'Remove furniture',
+    ['garage.list'] = 'View garage vehicles',
+    ['garage.store'] = 'Store garage vehicle',
+    ['garage.retrieve'] = 'Retrieve garage vehicle',
+    ['camera.view'] = 'View cameras',
+    ['camera.manage'] = 'Manage cameras',
+    ['alarm.arm'] = 'Arm or disarm alarms',
+    ['alarm.configure'] = 'Configure alarms',
+    ['sales.manage'] = 'Manage property sales',
+    ['lease.manage'] = 'Manage leases',
+}
+
+Housing.grantablePermissions = {
+    ['access.share'] = true,
+    entry = true,
+    ['stash.open'] = true,
+    ['storage.upgrade'] = true,
+    ['furniture.place'] = true,
+    ['furniture.move'] = true,
+    ['furniture.remove'] = true,
+    ['garage.list'] = true,
+    ['garage.store'] = true,
+    ['garage.retrieve'] = true,
+    ['camera.view'] = true,
+    ['camera.manage'] = true,
+    ['alarm.arm'] = true,
+    ['alarm.configure'] = true,
+}

@@ -1,0 +1,112 @@
+Config = {
+    realtorJob = 'realestate',
+    societyAccount = 'realestate',
+    sellerCommission = 0.02,
+    societyCommission = 0.03,
+    defaultGarageSlots = 2,
+    maxGarageSlots = 12,
+    -- Show "Use my position" buttons in the property creator that fill the entrance, exit
+    -- and garage X/Y/Z/heading fields from the player's position (vehicle heading for garage fields when driving). Also sets pickPosition on the
+    -- vector fields themselves (kora_lib form button), including storage, shell origin and camera console.
+    positionPicker = true,
+    maxFurniture = 100,
+    maxStashes = 20,
+    maxClothingSpots = 20,
+    command = 'realestate',
+    homeCommand = 'home',
+    coordinateLimit = 20000,
+    escrowAccount = 'qbhousing_escrow',
+    salePolicyVersion = 1,
+    saleCommissions = {
+        public = { society = 0.035, agent = 0.025 },
+        off_market = { society = 0.035, agent = 0.025 },
+        private = { society = 0, agent = 0 },
+    },
+    storageTiers = {
+        { label = 'Standard', slots = 50, maxWeight = 100000, price = 0 },
+        { label = 'Expanded', slots = 75, maxWeight = 150000, price = 10000 },
+        { label = 'Large', slots = 100, maxWeight = 200000, price = 25000 },
+    },
+    tenantPermissions = {
+        entry = true, ['stash.open'] = true, ['garage.list'] = true,
+        ['garage.store'] = true, ['garage.retrieve'] = true,
+        ['furniture.place'] = true, ['furniture.move'] = true, ['furniture.remove'] = true,
+    },
+    rentalIntervals = { daily = 86400, weekly = 604800 },
+    depositReviewSeconds = 172800,
+    missedPayments = { daily = 3, weekly = 2 },
+    furnitureModels = {
+        prop_chair_01a = { label = 'Chair' }, prop_table_03 = { label = 'Table' },
+        prop_couch_01 = { label = 'Sofa' }, prop_bin_08 = { label = 'Bin' },
+    },
+    furnitureLimits = { house = 100, apartment = 100, mansion = 100, commercial = 100, hotel = 100, motel = 100, building = 100, land = 100, legacy = 100 },
+    cameraModel = 'prop_cctv_cam_01a',
+    maxCameras = 16,
+    maxCameraViewers = 4,
+    cameraSessionSeconds = 300,
+    cameraGrantSeconds = 86400,
+    alarmCooldown = 60,
+}
+
+Config.propertyTypes = {
+    house = { label = 'House', interior = 'required' },
+    apartment = { label = 'Apartment', interior = 'required' },
+    mansion = { label = 'Mansion', interior = 'required' },
+    commercial = { label = 'Commercial property', interior = 'optional' },
+    hotel = { label = 'Hotel', interior = 'optional' },
+    motel = { label = 'Motel', interior = 'optional' },
+    building = { label = 'Apartment building', interior = 'optional' },
+    land = { label = 'Land or lot', interior = 'none' },
+}
+
+-- Legacy shell exit: the "Leave property" prompt and key are active while the
+-- player is within `radius` metres of the shell exit point (zone driven, no polling).
+Config.shellExit = {
+    radius = 1.5,
+    key = 'E', -- default key; players can rebind it in their key settings
+}
+
+-- Interior entry. With waitForCollision on, entering a shell interior fades the screen, places the
+-- player frozen at the exit point, requests collision there and waits once (up to timeout ms) for
+-- it to stream in before unfreezing, so the player is not dropped into half-loaded shell geometry.
+-- If collision has not loaded by the timeout the player is released anyway.
+Config.interior = {
+    waitForCollision = { enabled = true, timeout = 5000 },
+}
+
+Config.shells = {
+    CreateApartmentShell = { label = 'Apartment', model = 'shell_v16low', basePrice = 125000, exit = { x = 4.693, y = -6.015, z = 1.11, w = 358.634 } },
+    CreateTier1House = { label = 'Tier 1 House', model = 'shell_v16mid', basePrice = 200000, exit = { x = 1.561, y = -14.305, z = 1.147, w = 2.263 } },
+    CreateTrevorsShell = { label = "Trevor's House", model = 'shell_trevor', basePrice = 180000, exit = { x = 0.374, y = -3.789, z = 2.428, w = 358.633 } },
+    CreateCaravanShell = { label = 'Caravan', model = 'shell_trailer', basePrice = 85000, exit = { x = -1.4, y = -2.1, z = 3.3, w = 358.634 } },
+    CreateLesterShell = { label = "Lester's House", model = 'shell_lester', basePrice = 225000, exit = { x = -1.78, y = -0.795, z = 1.1, w = 270.3 } },
+    CreateRanchShell = { label = 'Ranch', model = 'shell_ranch', basePrice = 350000, exit = { x = -1.257, y = -5.469, z = 2.5, w = 270.57 } },
+    CreateContainer = { label = 'Container', model = 'container_shell', basePrice = 65000, exit = { x = 0.08, y = -5.73, z = 1.24, w = 359.32 } },
+    CreateFurniMid = { label = 'Furnished Apartment', model = 'furnitured_midapart', basePrice = 160000, exit = { x = 1.46, y = -10.33, z = 1.06, w = 0.39 } },
+    CreateFurniMotelModern = { label = 'Modern Motel', model = 'modernhotel_shell', basePrice = 140000, exit = { x = 4.98, y = 4.35, z = 1.16, w = 179.79 } },
+    CreateFranklinAunt = { label = "Franklin's Aunt's House", model = 'shell_frankaunt', basePrice = 260000, exit = { x = -0.36, y = -5.89, z = 1.7, w = 358.21 } },
+    CreateGarageMed = { label = 'Medium Garage', model = 'shell_garagem', basePrice = 190000, exit = { x = 13.9, y = 1.63, z = 1.0, w = 87.05 } },
+    CreateMichael = { label = "Michael's House", model = 'shell_michael', basePrice = 500000, exit = { x = -9.49, y = 5.54, z = 9.91, w = 270.86 } },
+    CreateOffice1 = { label = 'Office', model = 'shell_office1', basePrice = 300000, exit = { x = 1.88, y = 5.06, z = 2.05, w = 180.07 } },
+    CreateStore1 = { label = 'Store', model = 'shell_store1', basePrice = 275000, exit = { x = -2.61, y = -4.73, z = 1.08, w = 1.0 } },
+    CreateFurniMotelStandard = { label = 'Standard Motel', model = 'standardmotel_shell', basePrice = 140000, exit = { x = -0.43, y = -2.51, z = 1.0, w = 271.29 } },
+    CreateWarehouse1 = { label = 'Warehouse', model = 'shell_warehouse1', basePrice = 425000, exit = { x = -8.95, y = 0.51, z = 1.04, w = 268.82 } },
+}
+
+-- Pinned qb-houses shell tiers. Physical boundaries/fixtures are still
+-- configured through native housing; stock tables contain no boundary data.
+Config.legacyHousing = {
+    minZOffset = 30,
+    -- The pinned stock config defines capacity for tier one only.
+    stashTiers = { [1] = { slots = 50, maxWeight = 1000000 } },
+    shellTiers = {
+        [1] = 'CreateApartmentShell', [2] = 'CreateTier1House',
+        [3] = 'CreateTrevorsShell', [4] = 'CreateCaravanShell',
+        [5] = 'CreateLesterShell', [6] = 'CreateRanchShell',
+        [7] = 'CreateContainer', [8] = 'CreateFurniMid',
+        [9] = 'CreateFurniMotelModern', [10] = 'CreateFranklinAunt',
+        [11] = 'CreateGarageMed', [12] = 'CreateMichael',
+        [13] = 'CreateOffice1', [14] = 'CreateStore1',
+        [15] = 'CreateWarehouse1', [16] = 'CreateFurniMotelStandard',
+    },
+}
