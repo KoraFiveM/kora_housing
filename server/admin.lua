@@ -59,7 +59,7 @@ function A.resume()
     for id, property in pairs(State.properties) do
         if property.state == 'archiving' then
             local ok, err = A.finish(id)
-            if not ok then pending = true; print(('[qbhousing] archival recovery deferred for %s: %s'):format(id, tostring(err))) end
+            if not ok then pending = true; Kora.logging.warn('admin.archival_recovery_deferred', 'Archival recovery deferred', { propertyId = id, error = tostring(err) }) end
         end
     end
     if pending then timer = Kora.timers.setTimeout(A.resume, 30000) end

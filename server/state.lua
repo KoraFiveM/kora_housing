@@ -38,7 +38,7 @@ function State.withWrite(id, handler)
     State.writes[id] = nil
     if Housing.storage and Housing.storage.frozen[id] and (not Housing.transactions or not Housing.transactions.busy(id)) then Housing.storage.unfreeze(id) end
     if not result[1] then
-        print(('[qbhousing] property write failed for %s: %s'):format(id, tostring(result[2])))
+        Kora.logging.error('property.write_failed', 'Property write failed', { propertyId = id, error = tostring(result[2]) })
         return nil, 'Property storage is unavailable. Please try again.'
     end
     return table.unpack(result, 2, result.n)
@@ -223,7 +223,7 @@ scheduleRecovery = function()
         for id in pairs(State.uncertain) do ids[#ids + 1] = id end
         for _, id in ipairs(ids) do
             local ok, err = State.reconcileProperty(id)
-            if not ok then print(('[qbhousing] property reconciliation deferred: %s'):format(tostring(err))) end
+            if not ok then Kora.logging.warn('property.reconciliation_deferred', 'Property reconciliation deferred', { error = tostring(err) }) end
         end
         scheduleRecovery()
     end, 30000)
@@ -262,7 +262,7 @@ function State.load()
         property.coowners, property.permissionGrants = {}, {}
         property.parentId, property.unitLabel = nil, nil
         loaded[row.id] = property
-        if property.propertyType == 'legacy' then print(('[qbhousing] property %s needs property-type classification in the creator.'):format(row.id)) end
+        if property.propertyType == 'legacy' then Kora.logging.warn('property.needs_classification', 'Legacy property needs property-type classification in the creator', { propertyId = row.id }) end
     end
     local backfill = {}
     for id, property in pairs(loaded) do

@@ -7,7 +7,7 @@ local function register(name, fn, max)
         if not State.ready then return nil, 'Housing is unavailable.' end
         local result = table.pack(pcall(fn, src, ...))
         if result[1] then return table.unpack(result, 2, result.n) end
-        print(('[qbhousing] callback %s failed: %s'):format(name, tostring(result[2])))
+        Kora.logging.error('callback.failed', 'Housing callback failed', { callback = name, error = tostring(result[2]) })
         return nil, 'Housing is unavailable. Please try again.'
     end, { rateLimit = { max = max or 10, window = 10000 } })
 end
@@ -21,25 +21,25 @@ local function mutation(name, handler)
 end
 
 CreateThread(function()
-    if not Kora.sql.ready(60000) then return print('^1[qbhousing]^7 qbsql was not ready; resource disabled.') end
+    if not Kora.sql.ready(60000) then Kora.logging.error('sql.not_ready', 'SQL was not ready; resource disabled') return end
     local reports, err = Kora.sql.ensureTables(QBHousingSchema)
-    if not reports then return print(('^1[qbhousing]^7 schema setup failed: %s'):format(tostring(err))) end
+    if not reports then Kora.logging.error('schema.setup_failed', 'Schema setup failed', { error = tostring(err) }) return end
     for _, report in ipairs(reports) do
         for _, warning in ipairs(report.warnings or {}) do
-            print(('^3[qbhousing]^7 schema warning on %s: %s'):format(tostring(report.table), tostring(warning)))
+            Kora.logging.warn('schema.warning', 'Schema check reported a warning', { table = tostring(report.table), warning = tostring(warning) })
         end
     end
     local imported, importError = Housing.legacy.importStock()
-    if not imported then return print(('^1[qbhousing]^7 stock import failed: %s'):format(tostring(importError))) end
+    if not imported then Kora.logging.error('import.stock_failed', 'Stock import failed', { error = tostring(importError) }) return end
     for _, loader in ipairs({ State.load, Housing.legacy.upgradeFixtures, Housing.sales.importLegacy, Housing.domain.load, Housing.leases.load, Housing.world.load, Housing.transactions.load }) do
         local loaded, loadErr = loader()
-        if not loaded then return print(('^1[qbhousing]^7 load failed: %s'):format(tostring(loadErr))) end
+        if not loaded then Kora.logging.error('load.failed', 'Housing data load failed', { error = tostring(loadErr) }) return end
     end
     local function activate()
         local storageReady, storageErr = Housing.storage.load()
         local doorsReady, doorsErr = Housing.doors.load()
         if not storageReady or not doorsReady then
-            print(('[qbhousing] waiting for integrations: %s'):format(tostring(storageErr or doorsErr)))
+            Kora.logging.warn('integrations.waiting', 'Waiting for integrations', { error = tostring(storageErr or doorsErr) })
             Kora.timers.setTimeout(activate, 5000)
             return
         end

@@ -1,0 +1,1 @@
+# no allowlisted paths: all runtime print() calls were migrated; tests/ and test/ are excluded by the guard

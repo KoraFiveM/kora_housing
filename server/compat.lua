@@ -65,7 +65,7 @@ local function register(name, handler, max)
         if not Housing.state.ready then return nil end
         local ok, result = pcall(handler, src, ...)
         if ok then return result end
-        print(('[qbhousing] compat callback %s failed: %s'):format(name, tostring(result)))
+        Kora.logging.error('compat.callback_failed', 'Compat callback failed', { callback = name, error = tostring(result) })
     end, { rateLimit = { max = max, window = 10000 } })
 end
 
