@@ -140,5 +140,5 @@ end
 AddEventHandler('qbdoorlock:loaded', function()
     if not State.ready then return end
     local ok, err = Doors.load()
-    if not ok then print('[qbhousing] Door policies could not rebind: ' .. tostring(err)) end
+    if not ok then Kora.logging.warn('doors.rebind_failed', 'Door policies could not rebind', { error = tostring(err) }) end
 end)

@@ -11,7 +11,7 @@ return function()
     local env = {}; for k,v in pairs(_G) do env[k]=v end
     env.Housing, env.Config, env.json = nil, nil, json
     env.AddEventHandler, env.print = function() end, function() end
-    env.Kora = { sql = { NULL = '\0qbsql:null\0', awaitCheckedOperations = function() return {} end } }
+    env.Kora = { sql = { NULL = '\0qbsql:null\0', awaitCheckedOperations = function() return {} end }, logging = setmetatable({ isEnabled = function() return false end }, { __index = function() return function() return true end end }) }
     local sql = env.Kora.sql
     local function values(map) local out = {}; for _,v in pairs(map) do out[#out+1]=copy(v) end; return out end
     function sql.query(query, params)

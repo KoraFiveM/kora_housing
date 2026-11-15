@@ -406,7 +406,7 @@ function L.schedule()
             end)
             if not called or not ok then
                 retries[lease.id] = os.time() + 30
-                print(('[qbhousing] lease processing deferred: %s'):format(tostring(called and err or ok)))
+                Kora.logging.warn('lease.processing_deferred', 'Lease processing deferred; will retry', { error = tostring(called and err or ok) })
             end
         end
         processing = false

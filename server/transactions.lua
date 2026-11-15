@@ -21,7 +21,7 @@ local function publish(row)
     if Housing.storage then
         Housing.storage.unfreeze(row.property_id)
         local ready, err = Housing.storage.refresh(row.property_id)
-        if not ready then print(('[qbhousing] integration refresh deferred: %s'):format(tostring(err))) end
+        if not ready then Kora.logging.warn('transactions.integration_refresh_deferred', 'Integration refresh deferred', { error = tostring(err) }) end
     end
     State.broadcast()
     return result
@@ -53,7 +53,7 @@ function T.resume()
             State.writes[row.property_id] = true
             local ok, err = pcall(execute, row)
             State.writes[row.property_id] = nil
-            if not ok then print(('[qbhousing] transaction recovery deferred: %s'):format(tostring(err))) end
+            if not ok then Kora.logging.warn('transactions.recovery_deferred', 'Transaction recovery deferred', { error = tostring(err) }) end
         end
     end
     if next(T.pending) then timer = Kora.timers.setTimeout(T.resume, 30000) end

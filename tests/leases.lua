@@ -25,7 +25,9 @@ function Housing.state.withWrite(_, fn)
     if not result[1] then error(result[2]) end
     return table.unpack(result, 2, result.n)
 end
-Kora = { sql = { NULL = '__NULL__' }, timers = {} }
+logged = {}
+local function spy(level) return function(event, message, fields) logged[#logged + 1] = { level = level, event = event, message = message, fields = fields }; return true end end
+Kora = { sql = { NULL = '__NULL__' }, timers = {}, logging = { warn = spy('warn'), error = spy('error'), info = spy('info'), debug = spy('debug'), isEnabled = function() return true end } }
 function Kora.timers.setTimeout(fn, delay) serial = serial + 1; timers[serial] = { fn = fn, delay = delay }; return serial end
 function Kora.timers.clearTimeout(id) timers[id] = nil end
 local function check(value, message) assert(value, message); checks = checks + 1 end
@@ -211,6 +213,8 @@ restart(); check(onlyTimer().delay == 50000, 'Ending deadline takes precedence o
 now = ending.end_at; count = #payments
 local t = onlyTimer(); timers = {}; failure = 'sql'; t.fn()
 check(db.leases.ending.status == 'ending' and onlyTimer().delay == 30000, 'A failed due operation retries only that known deadline with backoff')
+local deferred = logged[#logged]
+check(deferred and deferred.level == 'warn' and deferred.event == 'lease.processing_deferred' and deferred.fields and deferred.fields.error ~= nil, 'A deferred lease emits Kora.logging.warn lease.processing_deferred with the error in fields')
 failure = nil; now = now + 30; t = onlyTimer(); timers = {}; t.fn()
 check(db.leases.ending.status == 'ended' and #payments == count, 'Termination completes without charging another rent period')
 check(Housing.world.furniture.tenant_chair.status == 'recovery' and db.furniture.tenant_chair.status == 'recovery', 'Actual lease and world services recover furniture under one property lock')

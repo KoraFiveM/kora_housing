@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Guard: no raw print/console diagnostics outside test/print_allowlist.txt.
+"${LUA:-lua}" test/no_raw_print.lua
 # Runs actual housing services against host/SQL transport fixtures.
 "${LUA:-lua}" tests/purchase.lua "${1:-server/main.lua}"
 "${LUA:-lua}" tests/shell_exit.lua "${2:-client/main.lua}"
